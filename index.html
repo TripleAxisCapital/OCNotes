@@ -132,6 +132,8 @@
     body.fs-canvas-on main{ max-width:100vw; padding:0; margin:0 }
     body.fs-canvas-on #canvasPanel{ display:block !important; margin-top:0 }
     body.fs-canvas-on #canvasHost{ position:fixed; inset:0; border-radius:0 }
+    .canvas-fs-exit{ position:absolute; top:12px; right:12px; display:none; z-index:1001 }
+    body.fs-canvas-on .canvas-fs-exit, body.fs-active .canvas-fs-exit{ display:inline-flex }
 
     /* Print styles to render the document cleanly */
     @media print{
@@ -201,6 +203,9 @@
     .ql-snow .ql-picker-options{ background: var(--panel-2); border:1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); padding:6px; z-index: 1000; }
     .ql-snow .ql-picker-item{ padding: 6px 10px; border-radius: 8px }
     .ql-snow .ql-picker-item:hover{ background: rgba(255,255,255,0.10); }
+    /* Accessible focus ring */
+    :focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+    #historyDrawer .plus-glow{ margin-right: 0 }
 
     /* Font picker labels */
     .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="system"]::before,
@@ -361,8 +366,9 @@
       </div>
 
       <!-- Canvas Surface -->
-      <div id="canvasHost" class="glass rounded-2xl border mt-3 overflow-hidden" style="border-color:var(--line)">
+      <div id="canvasHost" class="glass rounded-2xl border mt-3 overflow-hidden" style="border-color:var(--line); position:relative">
         <canvas id="ocCanvas"></canvas>
+        <button id="fsExitOverlay" class="canvas-fs-exit px-3 py-1.5 glass-2 rounded-lg border text-sm" style="border-color:var(--line)" title="Exit Fullscreen" aria-label="Exit Fullscreen">Exit</button>
       </div>
     </div>
   </main>
@@ -374,7 +380,7 @@
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-semibold" style="color:var(--text)">Workspaces</h3>
         <div class="flex items-center gap-2">
-          <button id="drawerNew" class="w-9 h-9 grid place-content-center glass-2 hover:bg-white/20 rounded-lg border" style="border-color:var(--line)" title="New workspace" aria-label="New workspace"><span class="plus-glow">＋</span></button>
+          <button id="drawerNew" class="w-9 h-9 grid place-content-center glass-2 hover:bg-white/20 rounded-lg border" style="border-color:var(--line)" title="New workspace" aria-label="New workspace"><span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
           <button data-close-history class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Close</button>
         </div>
       </div>
@@ -821,18 +827,23 @@
         const elem = host;
         if (elem.requestFullscreen) { try { await elem.requestFullscreen({ navigationUI: 'hide' }); } catch(_) { document.body.classList.add('fs-canvas-on'); } }
         else { document.body.classList.add('fs-canvas-on'); }
+        document.body.classList.add('fs-active');
         fsBtn && (fsBtn.textContent = 'Exit');
         resize();
       }
       async function exitFS(){
         if (document.fullscreenElement && document.exitFullscreen) { try { await document.exitFullscreen(); } catch(_) { document.body.classList.remove('fs-canvas-on'); } }
         else { document.body.classList.remove('fs-canvas-on'); }
+        document.body.classList.remove('fs-active');
         fsBtn && (fsBtn.textContent = 'Full');
         resize();
       }
       function toggleFS(){ isFullscreen() ? exitFS() : enterFS(); }
       fsBtn && fsBtn.addEventListener('click', toggleFS);
-      document.addEventListener('fullscreenchange', () => { fsBtn && (fsBtn.textContent = isFullscreen() ? 'Exit' : 'Full'); resize(); });
+      document.addEventListener('fullscreenchange', () => { const on = isFullscreen(); document.body.classList.toggle('fs-active', on); fsBtn && (fsBtn.textContent = on ? 'Exit' : 'Full'); resize(); });
+      const fsExitOverlay = document.getElementById('fsExitOverlay');
+      if (fsExitOverlay) fsExitOverlay.addEventListener('click', exitFS);
+      window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isFullscreen()) { e.preventDefault(); exitFS(); } });
       function setZoom(z){ state.zoom = clamp(z, 0.1, 5); const c = new fabric.Point(canvas.getWidth()/2, canvas.getHeight()/2); canvas.zoomToPoint(c, state.zoom); $('#zoomLevel').value = Math.round(state.zoom*100); }
       function resetViewport(){ state.zoom = 1; canvas.setViewportTransform([1,0,0,1,0,0]); $('#zoomLevel').value = 100; canvas.requestRenderAll(); }
 
