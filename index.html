@@ -128,6 +128,18 @@
     }
     /* Safe area for notches */
     .safe-pad-bottom{ padding-bottom: env(safe-area-inset-bottom) }
+
+    /* Sidebar (ChatGPT-style) */
+    @media (min-width: 1024px){
+      body.with-sidebar{ padding-left: 300px }
+    }
+    #sidebarDock{ width:300px; position:fixed; left:0; top:var(--topbar-h,64px); bottom:0; padding:12px; display:none }
+    @media (min-width:1024px){ #sidebarDock{ display:block } }
+    #sidebarPanel{ height:100%; display:flex; flex-direction:column }
+    #sidebarList{ overflow:auto; overscroll-behavior:contain }
+    .note-row{ cursor:pointer }
+    .note-row:hover{ background-color: rgba(255,255,255,0.06) }
+    .note-row.active{ outline:1px solid var(--line); background-color: rgba(255,255,255,0.08) }
   </style>
 </head>
 <body class="h-full selection:bg-white/20">
@@ -161,8 +173,8 @@
               </div>
             </div>
 
-            <!-- History -->
-            <button id="historyBtn" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">History</button>
+            <!-- History (mobile toggle) -->
+            <button id="historyBtn" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm lg:hidden" style="border-color:var(--line)">History</button>
 
             <!-- Mode toggle -->
             <div class="ml-2 flex items-center rounded-xl glass-2 border overflow-hidden" style="border-color:var(--line)">
@@ -176,7 +188,18 @@
         </div>
       </div>
     </div>
-  </header>
+</header>
+
+  <!-- ======= SIDEBAR (Desktop) ======= -->
+  <aside id="sidebarDock" class="px-3">
+    <div id="sidebarPanel" class="glass rounded-2xl border p-3" style="border-color:var(--line)">
+      <div class="flex items-center gap-2 mb-2">
+        <button id="sbNew" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex-shrink-0" style="border-color:var(--line)">New</button>
+        <input id="sidebarSearch" placeholder="Search notes…" class="w-full glass-2 border rounded-xl px-3 py-2 outline-none" style="border-color:var(--line); color:var(--text)" />
+      </div>
+      <div id="sidebarList" class="space-y-2 pr-1"></div>
+    </div>
+  </aside>
 
   <!-- ======= TITLE ROW ======= -->
   <section class="max-w-[1200px] mx-auto px-4 mt-6">
@@ -254,12 +277,15 @@
   <!-- ======= HISTORY DRAWER ======= -->
   <div id="historyDrawer" class="fixed inset-0 hidden z-drawer">
     <div class="absolute inset-0 bg-black/50" data-close-history></div>
-    <div class="absolute right-0 top-0 h-full w-[420px] glass border-l p-4 overflow-y-auto" style="border-color:var(--line)">
+    <div class="absolute left-0 top-0 h-full w-[360px] glass border-r p-4 overflow-y-auto" style="border-color:var(--line)">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold" style="color:var(--text)">Recent (last 25)</h3>
+        <h3 class="text-lg font-semibold" style="color:var(--text)">Notes</h3>
         <button data-close-history class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Close</button>
       </div>
-      <input id="searchHistory" placeholder="Search…" class="w-full glass-2 border rounded-xl px-3 py-2 mb-3 outline-none" style="border-color:var(--line); color:var(--text)" />
+      <div class="flex items-center gap-2 mb-3">
+        <button id="drawerNew" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex-shrink-0" style="border-color:var(--line)">New</button>
+        <input id="searchHistory" placeholder="Search notes…" class="w-full glass-2 border rounded-xl px-3 py-2 outline-none" style="border-color:var(--line); color:var(--text)" />
+      </div>
       <div id="historyList" class="space-y-2"></div>
     </div>
   </div>
@@ -791,6 +817,7 @@
         });
       }
       clearDirty();
+      refreshSidebarUI();
     }
     function newDocument() {
       if (state.dirty && !confirm('Discard unsaved changes?')) return;
@@ -803,10 +830,11 @@
         state.canvas.setBackgroundColor(bg, state.canvas.renderAll.bind(state.canvas));
       }
       clearDirty();
+      refreshSidebarUI();
     }
     function saveDocument() {
       const snap = getSnapshot();
-      store.upsert(snap); clearDirty(); flash('Saved'); refreshHistoryUI();
+      store.upsert(snap); clearDirty(); flash('Saved'); refreshHistoryUI(); refreshSidebarUI();
     }
     function openFromChooser(){ $('#openFile').click(); }
     function importProject(file) {
@@ -935,6 +963,27 @@
       }));
     }
 
+    /* =============== SIDEBAR UI (Desktop) =============== */
+    function refreshSidebarUI() {
+      const list = store.loadAll();
+      const q = ($('#sidebarSearch').value || '').toLowerCase();
+      const holder = $('#sidebarList'); if (!holder) return; holder.innerHTML = '';
+      const currentId = state.id;
+      list.filter(item => !q || (item.title?.toLowerCase().includes(q) || (item.docHTML||'').toLowerCase().includes(q)))
+          .forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'note-row glass-2 rounded-xl border p-3 transition';
+            row.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
+            if (item.id === currentId) row.classList.add('active');
+            row.innerHTML = `
+              <div class="text-sm font-medium truncate" style="color:var(--text)">${escapeHtml(item.title||'Untitled')}</div>
+              <div class="text-[11px] mt-0.5" style="color:var(--muted)">${niceDate(item.updatedAt)}</div>
+            `;
+            row.addEventListener('click', () => { applySnapshot(item); refreshSidebarUI(); });
+            holder.appendChild(row);
+          });
+    }
+
     /* =============== MENUS / SHORTCUTS =============== */
     function wireMenus() {
       const expBtn = $('#exportBtn'), expMenu = $('#exportMenu');
@@ -955,6 +1004,10 @@
       // History close
       $$('#historyDrawer [data-close-history]').forEach(el => el.addEventListener('click', closeHistory));
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHistory(); });
+
+      // Sidebar & Drawer new button
+      const sbNew = document.getElementById('sbNew'); if (sbNew) sbNew.addEventListener('click', newDocument);
+      const drawerNew = document.getElementById('drawerNew'); if (drawerNew) drawerNew.addEventListener('click', newDocument);
     }
     function wireShortcuts() {
       window.addEventListener('keydown', (e) => {
@@ -982,6 +1035,8 @@
       // history
       $('#historyBtn').addEventListener('click', openHistory);
       $('#searchHistory').addEventListener('input', debounce(refreshHistoryUI, 120));
+      const sbs = document.getElementById('sidebarSearch');
+      if (sbs) sbs.addEventListener('input', debounce(refreshSidebarUI, 120));
 
       // title dirty tracking
       $('#docTitle').addEventListener('input', markDirty);
@@ -1008,6 +1063,17 @@
 
       setMode('doc');
       refreshHistoryUI();
+      refreshSidebarUI();
+
+      // measure header height to position sidebar
+      const header = document.querySelector('header');
+      if (header) document.documentElement.style.setProperty('--topbar-h', header.offsetHeight + 'px');
+      const applySidebarPadding = () => {
+        if (window.innerWidth >= 1024) document.body.classList.add('with-sidebar');
+        else document.body.classList.remove('with-sidebar');
+      };
+      applySidebarPadding();
+      window.addEventListener('resize', debounce(applySidebarPadding, 120));
 
       // Register service worker (PWA)
       if ('serviceWorker' in navigator) {
