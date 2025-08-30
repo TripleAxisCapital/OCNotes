@@ -119,6 +119,7 @@
       .toolbar-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch }
       .toolbar-scroll::-webkit-scrollbar{ height:6px }
       .top-actions{ flex-wrap: wrap; justify-content:flex-end }
+      .mobile-bar{ display:flex !important }
     }
 
     /* Print styles to render the document cleanly */
@@ -203,7 +204,7 @@
 
             <!-- Desktop actions only -->
             <div class="hidden lg:flex items-center gap-2 top-actions">
-              <button id="newBtn"   class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center" style="border-color:var(--line)"><span class="plus-glow">＋</span>New</button>
+              <button id="newBtn"   class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center" style="border-color:var(--line)"><span class="plus-glow">+</span>New</button>
               <button id="openBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Open…</button>
               <button id="saveBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Save ⌘S</button>
 
@@ -237,7 +238,7 @@
   <aside id="sidebarDock" class="px-3">
     <div id="sidebarPanel" class="glass rounded-2xl border p-3" style="border-color:var(--line)">
       <div class="flex items-center gap-2 mb-2">
-        <button id="sbNew" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center flex-shrink-0" style="border-color:var(--line)"><span class="plus-glow">＋</span>New</button>
+        <button id="sbNew" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center flex-shrink-0" style="border-color:var(--line)"><span class="plus-glow">+</span>New</button>
         <input id="sidebarSearch" placeholder="Search notes…" class="w-full glass-2 border rounded-xl px-3 py-2 outline-none" style="border-color:var(--line); color:var(--text)" />
       </div>
       <div id="sidebarList" class="space-y-2 pr-1"></div>
@@ -1170,5 +1171,11 @@
 
     document.addEventListener('DOMContentLoaded', boot);
   </script>
+  <!-- Mobile bottom bar -->
+  <nav class="mobile-bar fixed left-1/2 -translate-x-1/2 bottom-3 safe-pad-bottom px-2 py-1.5 glass border rounded-2xl shadow-lg flex items-center gap-1 z-[70]" style="border-color:var(--line); display:none">
+    <button id="mbNew" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="New">+</button>
+    <button id="mbMode" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="Toggle mode">Doc</button>
+    <button id="mbTheme" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="Toggle theme">☀︎/🌙</button>
+  </nav>
 </body>
 </html>
