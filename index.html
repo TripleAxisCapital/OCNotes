@@ -142,8 +142,8 @@
     body.fs-canvas-on #canvasHost{ position:fixed; inset:0; border-radius:0 }
     .canvas-fs-exit{ position:absolute; top:12px; right:12px; display:none; z-index:1001 }
     body.fs-canvas-on .canvas-fs-exit, body.fs-active .canvas-fs-exit{ display:inline-flex }
-    .canvas-fs-toolbar{ position:absolute; top:calc(env(safe-area-inset-top, 0px) + 12px); left:50%; transform: translateX(-50%); display:none; z-index:1002 }
-    body.fs-canvas-on .canvas-fs-toolbar, body.fs-active .canvas-fs-toolbar{ display:flex }
+    .canvas-fs-toolbar{ position:absolute; top:calc(env(safe-area-inset-top, 0px) + 12px); left:50%; transform: translateX(-50%); display:flex; z-index:1002 }
+    /* Hide big toolbar in immersive fullscreen */
     body.fs-canvas-on .canvas-toolbar, body.fs-active .canvas-toolbar{ display:none !important }
 
     /* Print styles to render the document cleanly */
@@ -381,11 +381,11 @@
       <!-- Canvas Surface -->
       <div id="canvasHost" class="glass rounded-2xl border mt-3 overflow-hidden" style="border-color:var(--line); position:relative">
         <div id="fsToolbar" class="canvas-fs-toolbar glass border rounded-xl px-2 py-1.5 flex items-center gap-1" style="border-color:var(--line)">
-          <button id="fsToolbarExit" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Exit</button>
+          <button id="fsToolbarExit" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Full</button>
           <div class="h-5 w-px bg-white/10 mx-1"></div>
-          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)" data-tool="select">Move</button>
-          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)" data-tool="sticky">Sticky</button>
-          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)" data-tool="text">Text</button>
+          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="select">Move</button>
+          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="sticky">Sticky</button>
+          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="text">Text</button>
         </div>
         <canvas id="ocCanvas"></canvas>
       </div>
@@ -600,11 +600,13 @@
       state.canvas = canvas;
 
       const resize = () => {
-        const w = host.clientWidth || window.innerWidth || 1200;
+        const vv = window.visualViewport;
+        const vw = (vv?.width) ? Math.round(vv.width) : (host.clientWidth || window.innerWidth || 1200);
         const fsOn = !!document.fullscreenElement || document.body.classList.contains('fs-canvas-on');
-        const h = fsOn ? window.innerHeight : Math.max(600, window.innerHeight - 260);
-        cEl.width = w; cEl.height = h;
-        canvas.setWidth(w); canvas.setHeight(h);
+        const vh = (vv?.height) ? Math.round(vv.height) : window.innerHeight;
+        const h = fsOn ? vh : Math.max(600, window.innerHeight - 260);
+        cEl.width = vw; cEl.height = h;
+        canvas.setWidth(vw); canvas.setHeight(h);
         canvas.requestRenderAll();
       };
       resize();
@@ -853,6 +855,7 @@
         else { document.body.classList.add('fs-canvas-on'); }
         document.body.classList.add('fs-active');
         fsBtn && (fsBtn.textContent = 'Exit');
+        const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Exit';
         resize();
       }
       async function exitFS(){
@@ -860,13 +863,21 @@
         else { document.body.classList.remove('fs-canvas-on'); }
         document.body.classList.remove('fs-active');
         fsBtn && (fsBtn.textContent = 'Full');
+        const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Full';
         resize();
       }
       function toggleFS(){ isFullscreen() ? exitFS() : enterFS(); }
       fsBtn && fsBtn.addEventListener('click', toggleFS);
-      document.addEventListener('fullscreenchange', () => { const on = isFullscreen(); document.body.classList.toggle('fs-active', on); fsBtn && (fsBtn.textContent = on ? 'Exit' : 'Full'); resize(); });
+      document.addEventListener('fullscreenchange', () => {
+        const on = isFullscreen();
+        document.body.classList.toggle('fs-active', on);
+        if (fsBtn) fsBtn.textContent = on ? 'Exit' : 'Full';
+        const fsTB = document.getElementById('fsToolbarExit');
+        if (fsTB) fsTB.textContent = on ? 'Exit' : 'Full';
+        resize();
+      });
       const fsToolbarExit = document.getElementById('fsToolbarExit');
-      if (fsToolbarExit) fsToolbarExit.addEventListener('click', exitFS);
+      if (fsToolbarExit) fsToolbarExit.addEventListener('click', () => { isFullscreen() ? exitFS() : enterFS(); });
       window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isFullscreen()) { e.preventDefault(); exitFS(); } });
       function setZoom(z){ state.zoom = clamp(z, 0.1, 5); const c = new fabric.Point(canvas.getWidth()/2, canvas.getHeight()/2); canvas.zoomToPoint(c, state.zoom); $('#zoomLevel').value = Math.round(state.zoom*100); }
       function resetViewport(){ state.zoom = 1; canvas.setViewportTransform([1,0,0,1,0,0]); $('#zoomLevel').value = 100; canvas.requestRenderAll(); }
@@ -973,6 +984,7 @@
           document.body.classList.add('fs-canvas-on');
           document.body.classList.add('fs-active');
           const fsBtn = document.getElementById('canvasFullscreen'); if (fsBtn) fsBtn.textContent = 'Exit';
+          const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Exit';
         }
       }
     }
