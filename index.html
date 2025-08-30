@@ -371,7 +371,6 @@
           <button id="zoomIn" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">+</button>
           <button id="centerCanvas" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Center</button>
           <button id="clearCanvas" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Clear</button>
-          <button id="canvasFullscreen" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)" title="Fullscreen">Full</button>
         </div>
         <div class="basis-full text-xs opacity-70 mt-1" style="color:var(--muted)">
           Move tool to drag · Text tool to type · Space = pan · Wheel = zoom
@@ -386,6 +385,8 @@
           <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="select">Move</button>
           <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="sticky">Sticky</button>
           <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="text">Text</button>
+          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="draw">Pen</button>
+          <input id="fsColor" type="color" class="w-7 h-7 p-0 bg-transparent border rounded-lg ml-1" style="border-color:var(--line)" title="Text/Brush Color" />
         </div>
         <canvas id="ocCanvas"></canvas>
       </div>
@@ -826,7 +827,24 @@
           active.forEach(o => applyColor(o, col));
           canvas.requestRenderAll(); markDirty();
         }
+        const fsColor = document.getElementById('fsColor'); if (fsColor) fsColor.value = col;
       });
+      const fsColor = document.getElementById('fsColor');
+      if (fsColor) {
+        try { fsColor.value = document.getElementById('brushColor').value || '#ffffff'; } catch {}
+        fsColor.addEventListener('input', (e) => {
+          const col = e.target.value || '#ffffff';
+          // sync main color
+          const bc = document.getElementById('brushColor'); if (bc) bc.value = col;
+          // apply like main handler
+          if (canvas.isDrawingMode) { canvas.freeDrawingBrush.color = col; return; }
+          const active = canvas.getActiveObjects();
+          if (active.length) {
+            active.forEach(o => applyColor(o, col));
+            canvas.requestRenderAll(); markDirty();
+          }
+        });
+      }
       function applyColor(obj, col){
         if (obj.type === 'path') obj.set({ stroke: col });
         else if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') obj.set({ fill: col });
