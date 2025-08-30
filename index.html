@@ -80,7 +80,7 @@
     ::-webkit-scrollbar{width:10px;height:10px}
     ::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px}
     ::-webkit-scrollbar-track{background:var(--panel-2)}
-    .ql-toolbar.ql-snow{border:1px solid var(--line);background:var(--panel-2);color:var(--text)}
+    .ql-toolbar.ql-snow{border:1px solid var(--line);background:var(--panel-2);color:var(--text); position:relative; z-index:60; overflow:visible}
     .ql-toolbar .ql-picker,.ql-toolbar button{color:var(--text)}
     .ql-snow .ql-stroke{stroke:var(--text)} .ql-snow .ql-fill{fill:var(--text)}
     .ql-container.ql-snow{border:1px solid var(--line);background:transparent;color:var(--text)}
@@ -116,7 +116,7 @@
       #page{ width:100%; max-width:100%; min-height:auto; border-radius:10px }
       #page .ql-editor{ min-height:50vh; padding:24px; font-size:16px }
       #pageWrap{ padding:12px }
-      .toolbar-scroll{ overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch }
+      .toolbar-scroll{ overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; position:relative; z-index:60 }
       .toolbar-scroll::-webkit-scrollbar{ height:6px }
       .top-actions{ flex-wrap: wrap; justify-content:flex-end }
       .mobile-bar{ display:flex !important }
