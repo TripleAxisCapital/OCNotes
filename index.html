@@ -116,7 +116,7 @@
       #page{ width:100%; max-width:100%; min-height:auto; border-radius:10px }
       #page .ql-editor{ min-height:50vh; padding:24px; font-size:16px }
       #pageWrap{ padding:12px }
-      .toolbar-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch }
+      .toolbar-scroll{ overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch }
       .toolbar-scroll::-webkit-scrollbar{ height:6px }
       .top-actions{ flex-wrap: wrap; justify-content:flex-end }
       .mobile-bar{ display:flex !important }
@@ -181,6 +181,41 @@
     .menu-panel{ backdrop-filter: blur(12px); background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,0.35); border-radius: 12px; overflow: hidden; }
     .menu-item{ width:100%; text-align:left; padding:8px 12px; }
     .menu-item:hover{ background: rgba(255,255,255,0.10); }
+
+    /* Quill picker dropdown fixes (mobile + desktop) */
+    .ql-snow .ql-picker{ color: var(--text); }
+    .ql-snow .ql-picker-label{ padding: 6px 10px; border:none }
+    .ql-snow .ql-picker-options{ background: var(--panel-2); border:1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); padding:6px; z-index: 1000; }
+    .ql-snow .ql-picker-item{ padding: 6px 10px; border-radius: 8px }
+    .ql-snow .ql-picker-item:hover{ background: rgba(255,255,255,0.10); }
+
+    /* Font picker labels */
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="system"]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="system"]::before{ content:"System" }
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="serif"]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="serif"]::before{ content:"Serif" }
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="mono"]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="mono"]::before{ content:"Mono" }
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="georgia"]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="georgia"]::before{ content:"Georgia" }
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="garamond"]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="garamond"]::before{ content:"Garamond" }
+
+    /* Size picker labels */
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="12px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="12px"]::before{ content:"12" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="14px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="14px"]::before{ content:"14" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="16px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="16px"]::before{ content:"16" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="18px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="18px"]::before{ content:"18" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="24px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="24px"]::before{ content:"24" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="32px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="32px"]::before{ content:"32" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="48px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="48px"]::before{ content:"48" }
   </style>
 </head>
 <body class="h-full selection:bg-white/20">
@@ -257,7 +292,7 @@
   <main class="max-w-[1200px] mx-auto px-4 mt-4">
     <!-- Document Mode -->
     <div id="docPanel" class="space-y-3">
-      <div id="quillToolbar" class="rounded-2xl overflow-hidden toolbar-scroll"></div>
+      <div id="quillToolbar" class="rounded-2xl toolbar-scroll"></div>
       <div id="pageWrap" class="rounded-2xl glass border" style="border-color:var(--line)">
         <div id="page"><div id="quillEditor"></div></div>
       </div>
@@ -1125,7 +1160,10 @@
       if (sbs) sbs.addEventListener('input', debounce(refreshSidebarUI, 120));
 
       // title dirty tracking
-      $('#docTitle').addEventListener('input', markDirty);
+      const titleEl = $('#docTitle');
+      titleEl.addEventListener('input', markDirty);
+      // Clear placeholder title on focus for quick rename
+      titleEl.addEventListener('focus', () => { if (titleEl.value.trim() === 'Untitled note') { titleEl.value = ''; } });
 
       // theme
       $('#themeBtn').addEventListener('click', toggleTheme);
