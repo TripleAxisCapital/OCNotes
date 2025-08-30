@@ -108,7 +108,6 @@
 
     /* Responsive layout refinements */
     @media (max-width: 1024px){
-      body{ padding-bottom: 88px }
       #page{ width:100%; max-width:100%; min-height:auto; border-radius:10px }
       #page .ql-editor{ min-height:50vh; padding:24px; font-size:16px }
       #pageWrap{ padding:12px }
@@ -157,33 +156,36 @@
             </div>
           </div>
 
-          <div class="flex items-center gap-2 top-actions">
-            <button id="newBtn"   class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">New</button>
-            <button id="openBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Open…</button>
-            <button id="saveBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Save ⌘S</button>
+          <div class="flex items-center gap-2">
+            <!-- Mobile hamburger only -->
+            <button id="menuBtn" class="lg:hidden px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-label="Open menu">☰</button>
 
-            <!-- Export -->
-            <div class="relative">
-              <button id="exportBtn" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-haspopup="menu" aria-expanded="false">Export ▼</button>
-              <div id="exportMenu" class="hidden absolute right-0 mt-2 w-56 glass rounded-xl border overflow-hidden z-menu" style="border-color:var(--line)" role="menu" aria-label="Export options">
-                <button class="w-full text-left px-4 py-2 hover:bg-white/10" data-export="docx">Export as .docx (Word)</button>
-                <button class="w-full text-left px-4 py-2 hover:bg-white/10" data-export="pdf">Export as .pdf</button>
-                <button class="w-full text-left px-4 py-2 hover:bg-white/10" data-export="html">Export as .html</button>
-                <button class="w-full text-left px-4 py-2 hover:bg-white/10" data-export="json">Export project (.ocnote)</button>
+            <!-- Desktop actions only -->
+            <div class="hidden lg:flex items-center gap-2 top-actions">
+              <button id="newBtn"   class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">New</button>
+              <button id="openBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Open…</button>
+              <button id="saveBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Save ⌘S</button>
+
+              <!-- Export -->
+              <div class="relative">
+                <button id="exportBtn" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-haspopup="menu" aria-expanded="false">Export ▼</button>
+                <div id="exportMenu" class="hidden absolute right-0 mt-2 w-56 glass rounded-xl border overflow-hidden z-menu" style="border-color:var(--line)" role="menu" aria-label="Export options">
+                  <button class="w-full text-left px-4 py-2 hover:bg-white/10" data-export="docx">Export as .docx (Word)</button>
+                  <button class="w-full text-left px-4 py-2 hover:bg-white/10" data-export="pdf">Export as .pdf</button>
+                  <button class="w-full text-left px-4 py-2 hover:bg-white/10" data-export="html">Export as .html</button>
+                  <button class="w-full text-left px-4 py-2 hover:bg-white/10" data-export="json">Export project (.ocnote)</button>
+                </div>
               </div>
+
+              <!-- Mode toggle -->
+              <div class="ml-2 flex items-center rounded-xl glass-2 border overflow-hidden" style="border-color:var(--line)">
+                <button id="modeDoc" class="px-3 py-2 text-sm bg-white/10">Document</button>
+                <button id="modeCanvas" class="px-3 py-2 text-sm hover:bg-white/10">Canvas</button>
+              </div>
+
+              <!-- Theme toggle -->
+              <button id="themeBtn" title="Toggle Light/Dark" class="ml-2 px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">☀︎/🌙</button>
             </div>
-
-            <!-- History (mobile toggle) -->
-            <button id="historyBtn" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm lg:hidden" style="border-color:var(--line)">History</button>
-
-            <!-- Mode toggle -->
-            <div class="ml-2 flex items-center rounded-xl glass-2 border overflow-hidden" style="border-color:var(--line)">
-              <button id="modeDoc" class="px-3 py-2 text-sm bg-white/10">Document</button>
-              <button id="modeCanvas" class="px-3 py-2 text-sm hover:bg-white/10">Canvas</button>
-            </div>
-
-            <!-- Theme toggle -->
-            <button id="themeBtn" title="Toggle Light/Dark" class="ml-2 px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">☀︎/🌙</button>
           </div>
         </div>
       </div>
@@ -279,32 +281,31 @@
     <div class="absolute inset-0 bg-black/50" data-close-history></div>
     <div class="absolute left-0 top-0 h-full w-[360px] glass border-r p-4 overflow-y-auto" style="border-color:var(--line)">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold" style="color:var(--text)">Notes</h3>
-        <button data-close-history class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Close</button>
+        <h3 class="text-lg font-semibold" style="color:var(--text)">Workspaces</h3>
+        <div class="flex items-center gap-2">
+          <button id="drawerNew" class="w-9 h-9 grid place-content-center glass-2 hover:bg-white/20 rounded-lg border" style="border-color:var(--line)" title="New workspace" aria-label="New workspace">＋</button>
+          <button data-close-history class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Close</button>
+        </div>
       </div>
-      <div class="flex items-center gap-2 mb-3">
-        <button id="drawerNew" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex-shrink-0" style="border-color:var(--line)">New</button>
-        <input id="searchHistory" placeholder="Search notes…" class="w-full glass-2 border rounded-xl px-3 py-2 outline-none" style="border-color:var(--line); color:var(--text)" />
+      <div class="mb-3">
+        <input id="searchHistory" placeholder="Search…" class="w-full glass-2 border rounded-xl px-3 py-2 outline-none" style="border-color:var(--line); color:var(--text)" />
       </div>
       <div id="historyList" class="space-y-2"></div>
+      <div class="mt-4 pt-3 border-t" style="border-color:var(--line)">
+        <div class="text-xs mb-2" style="color:var(--muted)">Export current</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" data-drawer-export="docx">DOCX</button>
+          <button class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" data-drawer-export="pdf">PDF</button>
+          <button class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" data-drawer-export="html">HTML</button>
+          <button class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" data-drawer-export="json">Project</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- Hidden file input -->
   <input id="openFile" type="file" accept=".ocnote,application/json" class="hidden" />
 
-  <!-- Mobile bottom action bar -->
-  <div class="mobile-bar fixed bottom-0 left-0 right-0 z-topbar safe-pad-bottom">
-    <div class="max-w-[900px] mx-auto px-4 pb-3">
-      <div class="glass rounded-2xl border p-2 grid grid-cols-5 gap-2" style="border-color:var(--line)">
-        <button id="mbNew" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-label="New">New</button>
-        <button id="mbSave" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-label="Save">Save</button>
-        <button id="mbExport" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-haspopup="menu" aria-expanded="false">Export</button>
-        <button id="mbMode" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-label="Toggle Mode">Doc</button>
-        <button id="mbTheme" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-label="Theme">☀︎/🌙</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Offscreen export staging (used by PDF if ever needed) -->
   <div id="exportStage" style="position:absolute; left:-9999px; top:0; width:816px; background:#fff; color:#000; padding:24px;"></div>
@@ -1008,6 +1009,15 @@
       // Sidebar & Drawer new button
       const sbNew = document.getElementById('sbNew'); if (sbNew) sbNew.addEventListener('click', newDocument);
       const drawerNew = document.getElementById('drawerNew'); if (drawerNew) drawerNew.addEventListener('click', newDocument);
+
+      // Drawer export buttons
+      $$('#historyDrawer [data-drawer-export]').forEach(btn => btn.addEventListener('click', () => {
+        const k = btn.getAttribute('data-drawer-export');
+        if (k==='docx') exportDocx();
+        if (k==='pdf')  exportPDF();
+        if (k==='html') exportHTML();
+        if (k==='json') exportJSON();
+      }));
     }
     function wireShortcuts() {
       window.addEventListener('keydown', (e) => {
@@ -1033,7 +1043,8 @@
       $('#openFile').addEventListener('change', (e) => { const f = e.target.files?.[0]; if (f) importProject(f); e.target.value=''; });
 
       // history
-      $('#historyBtn').addEventListener('click', openHistory);
+      const menuBtn = document.getElementById('menuBtn');
+      if (menuBtn) menuBtn.addEventListener('click', openHistory);
       $('#searchHistory').addEventListener('input', debounce(refreshHistoryUI, 120));
       const sbs = document.getElementById('sidebarSearch');
       if (sbs) sbs.addEventListener('input', debounce(refreshSidebarUI, 120));
