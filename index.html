@@ -105,7 +105,15 @@
     input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0}
     input[type=number]{-moz-appearance:textfield; appearance:textfield}
     .z-topbar{z-index:50}.z-menu{z-index:55}.z-drawer{z-index:60}
-    .tool-active{background:rgba(255,255,255,0.10)!important; box-shadow:0 0 0 1px var(--line) inset}
+    /* Active tool: blue/green animated glow for clear state */
+    .tool-active{
+      background: linear-gradient(135deg, #22d3ee 0%, #10b981 50%, #22d3ee 100%) !important;
+      background-size: 200% 200%;
+      color: #fff !important;
+      animation: ocGradientShift 6s ease-in-out infinite;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.18) inset, 0 6px 18px rgba(34,211,238,0.25);
+      border-color: rgba(255,255,255,0.25) !important;
+    }
 
     /* Minimal Quill styles for exported HTML rendering */
     .ql-align-center{text-align:center} .ql-align-right{text-align:right} .ql-align-justify{text-align:justify}
@@ -153,6 +161,8 @@
     /* Sidebar (ChatGPT-style) */
     @media (min-width: 1024px){
       body.with-sidebar{ padding-left: 300px }
+      /* Make header span the entire viewport width despite body padding */
+      body.with-sidebar header{ margin-left: -300px; width: calc(100% + 300px) }
     }
     #sidebarDock{ width:300px; position:fixed; left:0; top:var(--topbar-h,64px); bottom:0; padding:12px; display:none }
     @media (min-width:1024px){ #sidebarDock{ display:block } }
