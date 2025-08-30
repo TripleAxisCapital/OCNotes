@@ -1,0 +1,12 @@
+{
+  "name": "OC Notes",
+  "short_name": "OC Notes",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0b0b0b",
+  "theme_color": "#0b0b0b",
+  "description": "Apple-style hybrid note app with rich document editor and freeform canvas. Offline capable.",
+  "scope": ".",
+  "icons": []
+}
+
