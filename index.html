@@ -607,6 +607,42 @@
         targetFindTolerance: state.grid.targetTol
       });
       state.canvas = canvas;
+      try { canvas.upperCanvasEl.setAttribute('tabindex','1'); } catch {}
+
+      // Fallback eraser brush if Fabric doesn't provide one
+      if (!fabric.EraserBrush) {
+        fabric.EraserBrush = fabric.util.createClass(fabric.PencilBrush, {
+          initialize: function(canvas){ this.callSuper('initialize', canvas); },
+          _finalizeAndAddPath: function() {
+            const ctx = this.canvas.contextTop;
+            ctx.closePath();
+            if (this._points && this._points.length > 1) {
+              const pathData = this.convertPointsToSVGPath(this._points).join('');
+              if (pathData === 'M 0 0 Q 0 0 0 0 L 0 0') { this.canvas.clearContext(this.canvas.contextTop); this._reset(); return null; }
+              const path = this.createPath(pathData);
+              path.set({
+                fill: null,
+                stroke: '#000',
+                strokeWidth: this.width,
+                globalCompositeOperation: 'destination-out',
+                selectable: false,
+                evented: false,
+                strokeUniform: true
+              });
+              // add to canvas and render
+              this.canvas.add(path);
+              this.canvas.requestRenderAll();
+              // hook: mark dirty and history if available
+              try { markDirty(); if (typeof pushHistoryDebounced === 'function') pushHistoryDebounced(); } catch {}
+              this._reset();
+              return path;
+            }
+            this.canvas.clearContext(this.canvas.contextTop);
+            this._reset();
+            return null;
+          }
+        });
+      }
       const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
       function pushHistory(){
         if (!canvas || state.suppressHistory) return;
@@ -618,6 +654,7 @@
         } catch {}
       }
       const pushHistoryDebounced = debounce(pushHistory, 250);
+      canvas.__pushHistoryDebounced = pushHistoryDebounced;
       async function loadHistoryAt(idx){
         if (idx < 0 || idx >= state.hist.stack.length) return;
         const snap = state.hist.stack[idx];
@@ -678,6 +715,7 @@
       // 2) Move tool: drag anything; no typing; textboxes only enter edit on double-click (Fabric default)
 
       canvas.on('mouse:down', (opt) => {
+        try { if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } catch {}
         const target = opt.target;
         const pt = canvas.getPointer(opt.e);
 
@@ -697,7 +735,8 @@
             if (!target.isEditing) {
               canvas.setActiveObject(target);
               target.enterEditing();
-              target.hiddenTextarea && target.hiddenTextarea.focus();
+              if (target.hiddenTextarea) { try { target.hiddenTextarea.focus(); } catch {} }
+              setTimeout(()=>{ try { target.hiddenTextarea && target.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
               return;
             }
           }
@@ -733,7 +772,8 @@
           canvas.add(tb);
           canvas.setActiveObject(tb);
           tb.enterEditing();
-          tb.hiddenTextarea && tb.hiddenTextarea.focus();
+          if (tb.hiddenTextarea) { try { tb.hiddenTextarea.focus(); } catch {} }
+          setTimeout(()=>{ try { tb.hiddenTextarea && tb.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
           canvas.requestRenderAll();
           markDirty(); pushHistoryDebounced();
           return;
@@ -751,7 +791,8 @@
           // Switch to text tool and start editing
           useTool('text');
           sticky.enterEditing();
-          sticky.hiddenTextarea && sticky.hiddenTextarea.focus();
+          if (sticky.hiddenTextarea) { try { sticky.hiddenTextarea.focus(); } catch {} }
+          setTimeout(()=>{ try { sticky.hiddenTextarea && sticky.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
           canvas.requestRenderAll();
           markDirty(); pushHistoryDebounced();
           return;
