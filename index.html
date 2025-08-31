@@ -607,7 +607,7 @@
         targetFindTolerance: state.grid.targetTol
       });
       state.canvas = canvas;
-      const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform'];
+      const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
       function pushHistory(){
         if (!canvas || state.suppressHistory) return;
         try {
@@ -654,11 +654,22 @@
       // Make paths draggable from stroke area; better UX
       canvas.on('path:created', (e) => {
         const p = e.path;
-        p.set({
-          selectable:true, evented:true, hasControls:true, hasBorders:true,
-          hoverCursor:'move', fill:null, strokeUniform:true
-        });
-        p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
+        const isErase = (state.currentTool === 'erase');
+        if (!isErase) {
+          p.set({
+            selectable:true, evented:true, hasControls:true, hasBorders:true,
+            hoverCursor:'move', fill:null, strokeUniform:true, erasable:true
+          });
+          p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
+        } else {
+          // Eraser path: use compositing fallback if EraserBrush not available
+          p.set({ selectable:false, evented:false, hasControls:false, hasBorders:false, fill:null, strokeUniform:true });
+          if (!fabric.EraserBrush) {
+            p.globalCompositeOperation = 'destination-out';
+            p.stroke = '#000';
+            p.strokeWidth = Number($('#brushSize').value || 12);
+          }
+        }
         markDirty(); pushHistoryDebounced();
       });
 
@@ -677,6 +688,19 @@
           canvas.lastPosX = opt.e.clientX;
           canvas.lastPosY = opt.e.clientY;
           return;
+        }
+
+        // Touch-friendly quick edit when in Move tool: single tap edits text
+        if (state.currentTool === 'select' && target && (target.type === 'textbox' || target.type === 'i-text')) {
+          const isTouch = !!(opt.e && (opt.e.touches || opt.e.pointerType === 'touch'));
+          if (isTouch) {
+            if (!target.isEditing) {
+              canvas.setActiveObject(target);
+              target.enterEditing();
+              target.hiddenTextarea && target.hiddenTextarea.focus();
+              return;
+            }
+          }
         }
 
         // If Text tool is active:
@@ -703,7 +727,8 @@
           const tb = new fabric.Textbox('',
             { left: pt.x, top: pt.y, width: 320, fontSize: 20, editable: true,
               fill: $('#brushColor').value || '#ffffff',
-              backgroundColor: 'rgba(255,255,255,0.04)', padding: 8, cornerStyle:'circle'
+              backgroundColor: 'rgba(255,255,255,0.04)', padding: 8, cornerStyle:'circle',
+              erasable: true
             });
           canvas.add(tb);
           canvas.setActiveObject(tb);
@@ -718,7 +743,8 @@
         if (state.currentTool === 'sticky') {
           const sticky = new fabric.Textbox('',
             { left: pt.x, top: pt.y, width: 260, fontSize: 18, editable: true,
-              fill:'#1f2937', backgroundColor: '#facc15', padding: 10, rx: 12, ry: 12, cornerStyle:'circle'
+              fill:'#1f2937', backgroundColor: '#facc15', padding: 10, rx: 12, ry: 12, cornerStyle:'circle',
+              erasable: true
             });
           canvas.add(sticky);
           canvas.setActiveObject(sticky);
@@ -782,6 +808,11 @@
         ctx.restore();
       });
 
+      // If Fabric eraser emits events, capture them to history
+      try {
+        canvas.on('erasing:end', () => { markDirty(); pushHistoryDebounced(); });
+      } catch {}
+
       // wheel zoom
       canvas.on('mouse:wheel', (opt) => {
         const delta = opt.e.deltaY;
@@ -801,6 +832,15 @@
           return !!(obj && (obj.isEditing === true || obj.isEditing));
         } catch { return false; }
       }
+      // allow double click to edit in any tool
+      canvas.on('mouse:dblclick', (opt) => {
+        const t = opt.target;
+        if (t && (t.type === 'textbox' || t.type === 'i-text')) {
+          canvas.setActiveObject(t);
+          t.enterEditing();
+          t.hiddenTextarea && t.hiddenTextarea.focus();
+        }
+      });
       window.addEventListener('keydown', (e) => {
         if (state.mode !== 'canvas') return;
         if (isEditingCanvasText()) return; // don't hijack typing while editing text/sticky
@@ -1014,6 +1054,10 @@
 
         if (kind === 'draw') {
           canvas.isDrawingMode = true;
+          // ensure normal pencil brush
+          if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) {
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          }
           canvas.freeDrawingBrush.color = $('#brushColor').value || '#ffffff';
           canvas.freeDrawingBrush.width = Number($('#brushSize').value || 3);
           canvas.defaultCursor = 'crosshair';
@@ -1033,8 +1077,19 @@
         }
 
         if (kind === 'erase') {
-          const active = canvas.getActiveObjects();
-          if (active.length) { active.forEach(o => canvas.remove(o)); canvas.discardActiveObject(); canvas.requestRenderAll(); markDirty(); }
+          // Eraser behaves like brush and subtracts content
+          canvas.isDrawingMode = true;
+          if (fabric.EraserBrush) {
+            canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
+            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
+          } else {
+            // fallback: use pencil brush; path will be converted in path:created
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.color = '#000';
+            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
+          }
+          canvas.defaultCursor = 'crosshair';
+          return;
         }
       }
 
@@ -1092,7 +1147,7 @@
           state.canvas.requestRenderAll();
           // reset history to this state
           try {
-            const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform'];
+            const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
             const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: state.canvas.backgroundColor || '#0f0f11' };
             state.hist.stack = [initial]; state.hist.idx = 0;
           } catch {}
@@ -1113,7 +1168,7 @@
         state.canvas.setBackgroundColor(bg, state.canvas.renderAll.bind(state.canvas));
         // reset canvas history
         try {
-          const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform'];
+          const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
           const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: state.canvas.backgroundColor || bg };
           state.hist.stack = [initial]; state.hist.idx = 0;
         } catch {}
