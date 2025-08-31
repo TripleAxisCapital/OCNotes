@@ -99,7 +99,7 @@
     #page{
       width:816px; min-height:1056px; background:var(--paper);
       border:1px solid var(--paper-edge); border-radius:12px; box-shadow:var(--shadow-paper);
-      overflow:visible; position:relative; transform-origin: top center;
+      overflow:visible; position:relative; transform-origin: top center; margin:0 auto;
     }
     #page .ql-editor{min-height:calc(1056px - 2in); padding:1in; font-size:16px; line-height:1.6}
     /* Title pill */
@@ -433,7 +433,6 @@
           <button id="fsUndo" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Undo</button>
           <button id="fsRedo" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Redo</button>
           <div class="h-5 w-px bg-white/10 mx-1"></div>
-          <button id="fsInsertTable" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Table</button>
           <button id="fsInsertInvoice" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Invoice</button>
         </div>
         <canvas id="ocCanvas"></canvas>
@@ -639,7 +638,6 @@
           </span>
           <span class="ql-formats"><button class="ql-clean"></button></span>
           <span class="ql-formats">
-            <button id="docInsertTable" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Table</button>
             <button id="docInsertInvoice" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Invoice</button>
           </span>
         </div>`;
@@ -659,25 +657,10 @@
       q.on('text-change', markDirty);
 
       // Document-side insertions (table & invoice)
-      const btnDocTable = document.getElementById('docInsertTable');
       const btnDocInvoice = document.getElementById('docInsertInvoice');
-      if (btnDocTable) btnDocTable.addEventListener('click', () => {
-        const rows = Number(prompt('Rows?', '4') || 4);
-        const cols = Number(prompt('Cols?', '4') || 4);
-        insertTableDoc(rows, cols);
-      });
       if (btnDocInvoice) btnDocInvoice.addEventListener('click', () => insertInvoiceDoc());
 
-      function insertTableDoc(rows=3, cols=3){
-        const col = currentUIColor();
-        const border = hexToRGBA(col, 0.35);
-        const styleCell = `style=\\"border:1px solid ${border}; color:${col}\\"`;
-        const grid = `<div class=\"doc-grid\" style=\"grid-template-columns: repeat(${cols}, minmax(0,1fr));\">${Array.from({length:rows*cols}).map(()=>`<div class=\\"doc-cell\\" ${styleCell} contenteditable=\\"true\\\"><br></div>`).join('')}</div>`;
-        const widgetStyle = `style=\\"border-color:${border}; color:${col}\\"`;
-        const html = `<div class=\"doc-widget\" ${widgetStyle} contenteditable=\"false\" draggable=\"true\" data-type=\"table\"><div class=\"drag-handle\" title=\"Drag\"></div><div class=\"resize-handle\" title=\"Resize\"></div>${grid}</div>`;
-        q.clipboard.dangerouslyPasteHTML(q.getSelection()?.index ?? q.getLength(), html);
-        markDirty();
-      }
+      // removed table insertion logic
 
       function insertInvoiceDoc(){
         const col = currentUIColor();
@@ -1050,37 +1033,10 @@
       if (fsUndo) fsUndo.addEventListener('click', undoCanvas);
       const fsRedo = document.getElementById('fsRedo');
       if (fsRedo) fsRedo.addEventListener('click', redoCanvas);
-      const fsInsertTable = document.getElementById('fsInsertTable');
       const fsInsertInvoice = document.getElementById('fsInsertInvoice');
-      if (fsInsertTable) fsInsertTable.addEventListener('click', () => {
-        const rows = Number(prompt('Rows?', '4') || 4);
-        const cols = Number(prompt('Cols?', '4') || 4);
-        insertTable(rows, cols);
-      });
       if (fsInsertInvoice) fsInsertInvoice.addEventListener('click', () => insertInvoice());
 
-      function insertTable(rows=3, cols=3){
-        const cellW = 120, cellH = 40, pad = 2;
-        const startX = (canvas.getWidth() - cols*cellW)/2;
-        const startY = (canvas.getHeight() - rows*cellH)/2;
-        const items = [];
-        for (let r=0; r<=rows; r++){
-          const y = startY + r*cellH;
-          items.push(new fabric.Line([startX, y, startX + cols*cellW, y], { stroke: 'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
-        }
-        for (let c=0; c<=cols; c++){
-          const x = startX + c*cellW;
-          items.push(new fabric.Line([x, startY, x, startY + rows*cellH], { stroke: 'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
-        }
-        for (let r=0; r<rows; r++){
-          for (let c=0; c<cols; c++){
-            items.push(new fabric.Textbox('', { left: startX + c*cellW + pad, top: startY + r*cellH + pad, width: cellW - pad*2, fontSize: 16, fill: $('#brushColor').value || '#ffffff', erasable:true }));
-          }
-        }
-        const grp = new fabric.Group(items, { left: 0, top: 0, subTargetCheck: true, objectCaching: false, erasable:true });
-        canvas.add(grp);
-        canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
-      }
+      // removed canvas table insertion
 
       function insertInvoice(){
         const items = [];
@@ -1671,8 +1627,8 @@
         const availW = Math.max(320, wrap.clientWidth - 24);
         const scale = Math.min(availW / 816, availH / 1056, 1);
         state.docScale = scale;
-        page.style.left = '50%';
-        page.style.transform = `translateX(-50%) scale(${scale})`;
+        page.style.left = '';
+        page.style.transform = `scale(${scale})`;
         wrap.style.minHeight = Math.ceil(1056 * scale + 24) + 'px';
       }
       fitDoc();
