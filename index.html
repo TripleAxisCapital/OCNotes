@@ -62,9 +62,10 @@
       --line:rgba(0,0,0,0.08); --accent:#0A84FF;
       --paper:#ffffff; --paper-text:#0a0a0a; --paper-edge:rgba(0,0,0,0.08);
     }
-    html,body{height:100%}
+    html,body{height:100%; overflow-x:hidden}
     body{
       background:var(--bg); color:var(--text);
+      overscroll-behavior-x: none;
       font-family:ui-sans-serif, SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
     }
     .glass{background:var(--panel); backdrop-filter:blur(12px)}
@@ -91,7 +92,7 @@
     html[data-theme="dark"] .ql-editor ::selection{ background: rgba(59,130,246,0.35) }
     html[data-theme="light"] .ql-editor ::selection{ background: rgba(10,132,255,0.28) }
     #pageWrap{
-      display:grid; place-items:center; padding:16px;
+      display:grid; place-items:center; padding:16px; overflow-x:hidden; width:100%;
       background:linear-gradient(var(--bg),var(--bg)) padding-box,
                  radial-gradient(600px 200px at 50% -50px, rgba(255,255,255,0.08), transparent) border-box;
     }
@@ -597,6 +598,10 @@
             </select>
           </span>
           <span class="ql-formats"><button class="ql-clean"></button></span>
+          <span class="ql-formats">
+            <button id="docInsertTable" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Table</button>
+            <button id="docInsertInvoice" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Invoice</button>
+          </span>
         </div>`;
     }
     function initQuill() {
@@ -612,6 +617,59 @@
       const q = new Quill('#quillEditor', { theme:'snow', modules:{ toolbar:'#quillToolbar' } });
       state.quill = q;
       q.on('text-change', markDirty);
+
+      // Document-side insertions (table & invoice)
+      const btnDocTable = document.getElementById('docInsertTable');
+      const btnDocInvoice = document.getElementById('docInsertInvoice');
+      if (btnDocTable) btnDocTable.addEventListener('click', () => {
+        const rows = Number(prompt('Rows?', '4') || 4);
+        const cols = Number(prompt('Cols?', '4') || 4);
+        insertTableDoc(rows, cols);
+      });
+      if (btnDocInvoice) btnDocInvoice.addEventListener('click', () => insertInvoiceDoc());
+
+      function insertTableDoc(rows=3, cols=3){
+        const cellStyle = 'border:1px solid var(--line); padding:8px; min-height:28px;';
+        let html = '<div style="display:grid; grid-template-columns: repeat(' + cols + ', minmax(0,1fr)); gap:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:12px 0;">';
+        for (let r=0; r<rows; r++){
+          for (let c=0; c<cols; c++){
+            html += '<div style="' + cellStyle + '" contenteditable="true"><br></div>';
+          }
+        }
+        html += '</div>';
+        q.clipboard.dangerouslyPasteHTML(q.getSelection()?.index ?? q.getLength(), html);
+        markDirty();
+      }
+
+      function insertInvoiceDoc(){
+        const html = `
+          <div style="margin:16px 0; padding:12px; border:1px solid var(--line); border-radius:12px">
+            <div style="text-align:center; font-weight:700; font-size:22px; margin-bottom:8px">INVOICE</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px">
+              <div contenteditable="true">From:<br>Your Company<br>Address</div>
+              <div contenteditable="true">Bill To:<br>Client Name<br>Address</div>
+            </div>
+            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; border:1px solid var(--line); border-radius:8px; overflow:hidden;">
+              <div style="padding:8px; border-right:1px solid var(--line); font-weight:600">Item</div>
+              <div style="padding:8px; border-right:1px solid var(--line); font-weight:600">Qty</div>
+              <div style="padding:8px; border-right:1px solid var(--line); font-weight:600">Price</div>
+              <div style="padding:8px; font-weight:600">Amount</div>
+              ${Array.from({length:4}).map(()=>`
+                <div style="padding:8px; border-top:1px solid var(--line); border-right:1px solid var(--line)" contenteditable="true"><br></div>
+                <div style="padding:8px; border-top:1px solid var(--line); border-right:1px solid var(--line)" contenteditable="true"><br></div>
+                <div style="padding:8px; border-top:1px solid var(--line); border-right:1px solid var(--line)" contenteditable="true"><br></div>
+                <div style="padding:8px; border-top:1px solid var(--line)" contenteditable="true"><br></div>
+              `).join('')}
+            </div>
+            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px">
+              <div style="border:1px solid var(--line); border-radius:8px; padding:8px" contenteditable="true">Notes</div>
+              <div style="text-align:right; font-weight:600">Total:</div>
+              <div style="border:1px solid var(--line); border-radius:8px; padding:8px" contenteditable="true">$0.00</div>
+            </div>
+          </div>`;
+        q.clipboard.dangerouslyPasteHTML(q.getSelection()?.index ?? q.getLength(), html);
+        markDirty();
+      }
     }
 
     /* =============== FABRIC CANVAS =============== */
