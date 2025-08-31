@@ -91,14 +91,14 @@
     html[data-theme="dark"] .ql-editor ::selection{ background: rgba(59,130,246,0.35) }
     html[data-theme="light"] .ql-editor ::selection{ background: rgba(10,132,255,0.28) }
     #pageWrap{
-      display:grid; place-items:start center; padding:24px;
+      display:grid; place-items:center; padding:24px;
       background:linear-gradient(var(--bg),var(--bg)) padding-box,
                  radial-gradient(600px 200px at 50% -50px, rgba(255,255,255,0.08), transparent) border-box;
     }
     #page{
       width:816px; min-height:1056px; background:var(--paper);
       border:1px solid var(--paper-edge); border-radius:12px; box-shadow:var(--shadow-paper);
-      overflow:visible; position:relative;
+      overflow:visible; position:relative; transform-origin: top center;
     }
     #page .ql-editor{min-height:calc(1056px - 2in); padding:1in; font-size:16px; line-height:1.6}
     #canvasHost{min-height:calc(100vh - 260px)}
@@ -121,8 +121,9 @@
 
     /* Responsive layout refinements */
     @media (max-width: 1024px){
-      #page{ width:100%; max-width:100%; min-height:auto; border-radius:10px }
-      #page .ql-editor{ min-height:50vh; padding:24px; font-size:16px }
+      /* Keep fixed 8.5x11 proportions; scale via JS for fit */
+      #page{ border-radius:10px }
+      #page .ql-editor{ padding:24px }
       #pageWrap{ padding:12px }
       .toolbar-scroll{ overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; position:relative; z-index:60 }
       .toolbar-scroll::-webkit-scrollbar{ height:6px }
@@ -164,6 +165,7 @@
       /* Make header span the entire viewport width despite body padding */
       body.with-sidebar header{ margin-left: -300px; width: calc(100% + 300px) }
     }
+    body.sidebar-collapsed #sidebarDock{ display:none !important }
     #sidebarDock{ width:300px; position:fixed; left:0; top:var(--topbar-h,64px); bottom:0; padding:12px; display:none }
     @media (min-width:1024px){ #sidebarDock{ display:block } }
     #sidebarPanel{ height:100%; display:flex; flex-direction:column }
@@ -269,7 +271,8 @@
             <button id="menuBtn" class="lg:hidden px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-label="Open menu">☰</button>
 
             <!-- Desktop actions only -->
-            <div class="hidden lg:flex items-center gap-2 top-actions">
+          <div class="hidden lg:flex items-center gap-2 top-actions">
+              <button id="toggleSidebar" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">History</button>
               <button id="newBtn"   class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center" style="border-color:var(--line)"><span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>New</button>
               <button id="openBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Open…</button>
               <button id="saveBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Save ⌘S</button>
@@ -492,6 +495,7 @@
     const store = {
       key: 'oc_notes_history_v4',
       themeKey: 'oc_theme',
+      sidebarKey: 'oc_sidebar_open',
       loadAll() { try { return JSON.parse(localStorage.getItem(this.key)) || []; } catch { return []; } },
       saveAll(list) { localStorage.setItem(this.key, JSON.stringify(list)); },
       upsert(doc) {
@@ -501,7 +505,9 @@
         this.saveAll(list.slice(0,25));
       },
       saveTheme(v){ localStorage.setItem(this.themeKey, v); },
-      loadTheme(){ return localStorage.getItem(this.themeKey); }
+      loadTheme(){ return localStorage.getItem(this.themeKey); },
+      saveSidebarOpen(v){ localStorage.setItem(this.sidebarKey, v ? '1':'0'); },
+      loadSidebarOpen(){ return localStorage.getItem(this.sidebarKey) !== '0'; }
     };
 
     /* =============== STATE =============== */
@@ -518,6 +524,8 @@
       zoom: 1,
       isSpacePanning: false,
       grid: { show:false, snap:false, size:24, targetTol:10 },
+      sidebarOpen: true,
+      docScale: 1,
     };
     const markDirty = () => { state.dirty = true; $('#dirtyDot').classList.remove('hidden'); try { autoSave && autoSave(); } catch {} }
     const clearDirty = () => { state.dirty = false; $('#dirtyDot').classList.add('hidden'); }
@@ -613,6 +621,20 @@
       if (!fabric.EraserBrush) {
         fabric.EraserBrush = fabric.util.createClass(fabric.PencilBrush, {
           initialize: function(canvas){ this.callSuper('initialize', canvas); },
+          onMouseDown: function(pointer, options){
+            this.canvas.contextTop.save();
+            this.canvas.contextTop.globalCompositeOperation = 'destination-out';
+            this.color = 'rgba(0,0,0,1)';
+            return this.callSuper('onMouseDown', pointer, options);
+          },
+          onMouseMove: function(pointer, options){
+            return this.callSuper('onMouseMove', pointer, options);
+          },
+          onMouseUp: function(options){
+            const r = this.callSuper('onMouseUp', options);
+            try { this.canvas.contextTop.restore(); } catch {}
+            return r;
+          },
           _finalizeAndAddPath: function() {
             const ctx = this.canvas.contextTop;
             ctx.closePath();
@@ -700,10 +722,11 @@
           p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
         } else {
           // Eraser path: use compositing fallback if EraserBrush not available
-          p.set({ selectable:false, evented:false, hasControls:false, hasBorders:false, fill:null, strokeUniform:true });
+          p.set({ selectable:false, evented:false, hasControls:false, hasBorders:false, fill:null, strokeUniform:true, eraser:true });
           if (!fabric.EraserBrush) {
             p.globalCompositeOperation = 'destination-out';
-            p.stroke = '#000';
+            // make stroke fully transparent so no ink is seen if composite not applied on preview
+            p.stroke = 'rgba(0,0,0,1)';
             p.strokeWidth = Number($('#brushSize').value || 12);
           }
         }
@@ -1148,6 +1171,7 @@
         $('#modeDoc').classList.add('bg-white/10');
         $('#modeCanvas').classList.remove('bg-white/10');
         const mb = document.getElementById('mbMode'); if (mb) mb.textContent = 'Doc';
+        try { window.ocFitDoc && window.ocFitDoc(); } catch {}
       } else {
         $('#docPanel').classList.add('hidden');
         $('#canvasPanel').classList.remove('hidden');
@@ -1473,12 +1497,45 @@
       // measure header height to position sidebar
       const header = document.querySelector('header');
       if (header) document.documentElement.style.setProperty('--topbar-h', header.offsetHeight + 'px');
+      // sidebar open/close state
+      state.sidebarOpen = store.loadSidebarOpen();
       const applySidebarPadding = () => {
-        if (window.innerWidth >= 1024) document.body.classList.add('with-sidebar');
-        else document.body.classList.remove('with-sidebar');
+        const wide = window.innerWidth >= 1024;
+        if (wide && state.sidebarOpen) {
+          document.body.classList.add('with-sidebar');
+          document.body.classList.remove('sidebar-collapsed');
+        } else {
+          document.body.classList.remove('with-sidebar');
+          document.body.classList.add('sidebar-collapsed');
+        }
       };
       applySidebarPadding();
-      window.addEventListener('resize', debounce(applySidebarPadding, 120));
+      window.addEventListener('resize', debounce(() => { applySidebarPadding(); fitDoc(); }, 120));
+
+      // sidebar toggle (desktop)
+      const sbToggle = document.getElementById('toggleSidebar');
+      if (sbToggle) sbToggle.addEventListener('click', () => { state.sidebarOpen = !state.sidebarOpen; store.saveSidebarOpen(state.sidebarOpen); applySidebarPadding(); fitDoc(); });
+
+      // Ensure page fits viewport like Word (always one 8.5x11 on screen)
+      function fitDoc(){
+        const wrap = document.getElementById('pageWrap'); if (!wrap) return;
+        const page = document.getElementById('page'); if (!page) return;
+        const headerEl = document.querySelector('header');
+        const tb = document.getElementById('quillToolbar');
+        const titleSec = document.getElementById('docTitle')?.closest('section');
+        const hH = headerEl?.offsetHeight || 0;
+        const tH = tb?.offsetHeight || 0;
+        const titleH = titleSec?.offsetHeight || 0;
+        const availH = Math.max(400, window.innerHeight - hH - tH - titleH - 48);
+        const availW = Math.max(320, wrap.clientWidth - 24);
+        const scale = Math.min(availW / 816, availH / 1056, 1);
+        state.docScale = scale;
+        page.style.transform = `scale(${scale})`;
+        wrap.style.minHeight = Math.ceil(1056 * scale + 24) + 'px';
+      }
+      fitDoc();
+      window.ocFitDoc = fitDoc;
+      window.addEventListener('resize', debounce(fitDoc, 150));
 
       // Register service worker (PWA)
       if ('serviceWorker' in navigator) {
