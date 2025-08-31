@@ -49,15 +49,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html-docx-js/0.4.1/html-docx.js"></script>
 
   <style>
+    /* ======== THEME & TOKENS ======== */
     :root {
       --bg:#0b0b0b; --text:#ededed; --muted:rgba(255,255,255,0.7);
       --panel:rgba(255,255,255,0.06); --panel-2:rgba(255,255,255,0.04);
       --line:rgba(255,255,255,0.12); --accent:#3B82F6;
       --shadow-paper:0 10px 30px rgba(0,0,0,0.18);
       --paper:#111214; --paper-text:#f2f2f2; --paper-edge:rgba(255,255,255,0.06);
-      /* New: padding controls */
-      --mobile-doc-pad: 12px; /* user-adjustable in Settings */
-      --doc-side-pad: 16px;   /* desktop default */
+      --toolbar-gap: 6px;
+      --mobile-side-pad: 12px; /* default; user-adjustable via Settings */
+      --pagewrap-pad: 16px;    /* desktop default; overridden on mobile to var(--mobile-side-pad) */
     }
     html[data-theme="light"]{
       --bg:#f5f5f7; --text:#0a0a0a; --muted:rgba(0,0,0,0.65);
@@ -65,12 +66,16 @@
       --line:rgba(0,0,0,0.08); --accent:#0A84FF;
       --paper:#ffffff; --paper-text:#0a0a0a; --paper-edge:rgba(0,0,0,0.08);
     }
+
     html,body{height:100%; overflow-x:hidden}
     body{
       background:var(--bg); color:var(--text);
       overscroll-behavior-x: none;
       font-family:ui-sans-serif, SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
     }
+
+    /* ======== GLASS + BACKGROUNDS ======== */
     .glass{background:var(--panel); backdrop-filter:blur(12px)}
     .glass-2{background:var(--panel-2); backdrop-filter:blur(12px)}
     .grad-bg{
@@ -85,50 +90,43 @@
     ::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px}
     ::-webkit-scrollbar-track{background:var(--panel-2)}
 
-    /* Quill polish + safe overflow */
+    /* ======== QUILL POLISH ======== */
     .ql-toolbar.ql-snow{
       border:1px solid var(--line);background:var(--panel-2);color:var(--text);
       position:relative; z-index:60; overflow:visible;
     }
-    .ql-toolbar .ql-formats{ margin-right:6px; flex:0 0 auto } /* no shrink */
     .ql-toolbar .ql-picker,.ql-toolbar button{color:var(--text)}
     .ql-snow .ql-stroke{stroke:var(--text)} .ql-snow .ql-fill{fill:var(--text)}
     .ql-container.ql-snow{border:1px solid var(--line);background:transparent;color:var(--text)}
     .ql-editor{color:var(--paper-text)}
-    /* Clear, visible selection in both themes */
     html[data-theme="dark"] ::selection{ background: rgba(59,130,246,0.35); color: inherit }
     html[data-theme="light"] ::selection{ background: rgba(10,132,255,0.28); color: inherit }
     html[data-theme="dark"] .ql-editor ::selection{ background: rgba(59,130,246,0.35) }
     html[data-theme="light"] .ql-editor ::selection{ background: rgba(10,132,255,0.28) }
 
-    /* Page wrapper: new side padding logic */
+    /* ======== PAGE AREA ======== */
     #pageWrap{
-      display:flex; justify-content:center; align-items:flex-start;
-      padding-top:16px; padding-bottom:16px;
-      padding-left: var(--doc-side-pad); padding-right: var(--doc-side-pad);
-      overflow-x:hidden; width:100%;
+      display:flex; justify-content:center; align-items:flex-start; padding:var(--pagewrap-pad); overflow-x:hidden; width:100%;
       background:linear-gradient(var(--bg),var(--bg)) padding-box,
                  radial-gradient(600px 200px at 50% -50px, rgba(255,255,255,0.08), transparent) border-box;
     }
-    /* Mobile pad becomes adjustable var */
-    @media (max-width: 768px){
-      :root { --doc-side-pad: var(--mobile-doc-pad); }
-    }
-
     #page{
       width:816px; min-height:1056px; background:var(--paper);
       border:1px solid var(--paper-edge); border-radius:12px; box-shadow:var(--shadow-paper);
       overflow:visible; position:relative; transform-origin: top center; margin:0 auto;
     }
     #page .ql-editor{min-height:calc(1056px - 2in); padding:1in; font-size:16px; line-height:1.6}
-    /* Title pill */
-    .title-pill{ display:inline-flex; align-items:center; border-radius:9999px }
+
+    /* ======== TITLES / PANELS ======== */
+    .title-pill{ display:inline-flex; align-items:center; border-radius:9999px; max-width:100% }
     #docTitle{ width:auto; max-width:60ch }
-    #canvasHost{min-height:calc(100vh - 260px)}
+    #canvasHost{min-height:calc(100vh - 260px); background:var(--panel); border-radius: 1rem}
+
     input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0}
     input[type=number]{-moz-appearance:textfield; appearance:textfield}
-    .z-topbar{z-index:50}.z-menu{z-index:55}.z-drawer{z-index:60}
-    /* Active tool glow */
+    .z-topbar{z-index:70}.z-menu{z-index:90}.z-drawer{z-index:80}.z-pop{z-index:1000}
+
+    /* Active tool */
     .tool-active{
       background: linear-gradient(135deg, #22d3ee 0%, #10b981 50%, #22d3ee 100%) !important;
       background-size: 200% 200%;
@@ -138,34 +136,37 @@
       border-color: rgba(255,255,255,0.25) !important;
     }
 
-    /* Minimal Quill styles for exported HTML rendering */
-    .ql-align-center{text-align:center} .ql-align-right{text-align:right} .ql-align-justify{text-align:justify}
-    .ql-indent-1{margin-left:3em} .ql-indent-2{margin-left:6em} .ql-indent-3{margin-left:9em}
+    /* ======== RESPONSIVE TOOLBAR SHELLS ======== */
+    /* Top actions container (desktop) */
+    .top-actions{
+      display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px;
+    }
+    /* All app toolbars use a common shell that never overlaps and scrolls horizontally when needed */
+    .toolbar-shell{
+      display:flex; align-items:center; gap:var(--toolbar-gap);
+      flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;
+      scrollbar-gutter: stable both-edges;
+    }
+    .toolbar-shell > *{ flex-shrink:0; white-space:nowrap }
+    /* Quill toolbar inner rail */
+    #quillToolbar > .toolbar-shell{ padding:8px; }
 
-    /* Responsive layout: toolbars never overflow */
-    .toolbar-scroll{ overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; position:relative; z-index:60; display:flex; }
-    .toolbar-scroll > *{ flex: 0 0 auto }
-    .top-actions{ flex-wrap: wrap; justify-content:flex-end; gap:8px }
-    .top-actions > *{ flex:0 0 auto } /* prevent squeezing */
+    /* Canvas toolbars */
     .canvas-toolbar{ overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; white-space:nowrap; max-width:100% }
     .canvas-toolbar > *{ flex-shrink:0 }
-    .canvas-fs-toolbar{ max-width: calc(100vw - 16px); overflow-x:auto; -webkit-overflow-scrolling:touch }
+    .canvas-fs-toolbar{ max-width: min(100vw - 16px, 1200px); overflow-x:auto; -webkit-overflow-scrolling:touch }
 
-    @media (max-width: 1024px){
-      #page{ border-radius:10px }
-      #page .ql-editor{ padding:24px }
-      /* Title + main keep comfortable edges; pageWrap controls doc padding */
-      section.max-w-\[1200px\]{ padding-left:16px; padding-right:16px }
-      .mobile-bar{ display:flex !important }
-    }
+    /* Keep dropdowns within viewport */
+    .ql-snow .ql-picker-options{ max-height:60vh; overflow:auto }
+    @media (max-width: 768px){ .ql-snow .ql-picker-options{ max-width:90vw; right:0 !important; left:auto !important } }
 
-    /* Print styles */
+    /* ======== FULLSCREEN CANVAS ======== */
     body.fs-canvas-on{ overflow:hidden }
     body.fs-canvas-on header,
     body.fs-canvas-on #sidebarDock,
     body.fs-canvas-on section:nth-of-type(1),
     body.fs-canvas-on .mobile-bar{ display:none !important }
-    body.fs-canvas-on main{ max-width:100vw; padding:0; margin:0 }
+    body.fs-canvas-on main{ max-width:100vw; padding:0 !important; margin:0 }
     body.fs-canvas-on #canvasPanel{ display:block !important; margin-top:0 }
     body.fs-canvas-on #canvasHost{ position:fixed; inset:0; border-radius:0 }
     .canvas-fs-exit{ position:absolute; top:12px; right:12px; display:none; z-index:1001 }
@@ -175,16 +176,18 @@
     #canvasHost canvas{ touch-action: none }
     .canvas-fs-toolbar button, .canvas-fs-toolbar input{ touch-action: manipulation }
 
+    /* ======== PRINT ======== */
     @media print{
       body, html{ background:#fff; color:#000 }
-      header, #canvasPanel, #historyDrawer, .mobile-bar, #settingsPage{ display:none !important }
+      header, #canvasPanel, #historyDrawer, .mobile-bar{ display:none !important }
       main{ margin:0; padding:0 }
       #pageWrap{ background:#fff; box-shadow:none; border:none; padding:0 }
       #page{ width:816px; min-height:1056px; border:none; box-shadow:none }
       #page .ql-editor{ padding:1in; color:#000 }
     }
 
-    /* Sidebar (Desktop) */
+    /* ======== SAFE AREAS / SIDEBAR ======== */
+    .safe-pad-bottom{ padding-bottom: env(safe-area-inset-bottom) }
     @media (min-width: 1024px){
       body.with-sidebar{ padding-left: 300px }
       body.with-sidebar header{ margin-left: -300px; width: calc(100% + 300px) }
@@ -198,7 +201,7 @@
     .note-row:hover{ background-color: rgba(255,255,255,0.06) }
     .note-row.active{ outline:1px solid var(--line); background-color: rgba(255,255,255,0.08) }
 
-    /* Glowing blue/green plus */
+    /* ======== FLARE DETAILS ======== */
     .plus-glow{
       display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; margin-right:8px;
       border-radius:999px; color:white; font-weight:700; font-size:14px;
@@ -209,13 +212,9 @@
     }
     .plus-glow svg{ width:14px; height:14px; display:block }
     .mobile-bar .plus-glow{ margin-right:0 }
-    @keyframes ocGradientShift{
-      0%{ background-position: 0% 50% }
-      50%{ background-position: 100% 50% }
-      100%{ background-position: 0% 50% }
-    }
+    @keyframes ocGradientShift{ 0%{ background-position: 0% 50% } 50%{ background-position: 100% 50% } 100%{ background-position: 0% 50% } }
 
-    /* Quill pickers */
+    /* ======== QUILL FONTS / SIZES ======== */
     .ql-snow .ql-picker.ql-font .ql-picker-label::before,
     .ql-snow .ql-picker.ql-font .ql-picker-item::before { content: attr(data-label); }
     .ql-font-system{ font-family: ui-sans-serif, SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol; }
@@ -231,21 +230,40 @@
     .ql-size-32px{ font-size:32px; }
     .ql-size-48px{ font-size:48px; }
 
-    /* Menu panel */
+    /* ======== MENU PANEL (POPUP) ======== */
     .menu-panel{ backdrop-filter: blur(12px); background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,0.35); border-radius: 12px; overflow: hidden; }
-    .menu-item{ width:100%; text-align:left; padding:8px 12px; word-break:break-word }
+    .menu-item{ width:100%; text-align:left; padding:10px 12px; word-break:break-word; white-space:nowrap }
     .menu-item:hover{ background: rgba(255,255,255,0.10); }
 
-    /* Picker dropdown fixes */
-    .ql-snow .ql-picker{ color: var(--text); }
-    .ql-snow .ql-picker-label{ padding: 6px 10px; border:none }
-    .ql-snow .ql-picker-options{ background: var(--panel-2); border:1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); padding:6px; z-index: 1000; }
-    .ql-snow .ql-picker-item{ padding: 6px 10px; border-radius: 8px }
-    .ql-snow .ql-picker-item:hover{ background: rgba(255,255,255,0.10); }
+    /* Toolbar control sizing */
+    .ql-toolbar .ql-formats{ margin-right:6px }
+    .ql-toolbar .ql-picker-label, .ql-toolbar button{ padding:4px 6px }
+    .canvas-fs-toolbar button{ padding:4px 8px }
+    .canvas-fs-toolbar input{ margin:0 2px }
 
-    /* Accessible focus ring */
+    /* Document widgets (tables/invoices) */
+    .doc-widget{ position:relative; border:1px solid var(--line); border-radius:12px; background:var(--panel-2); padding:8px; margin:12px 0; user-select:text; -webkit-user-select:text; max-width:100% }
+    .doc-widget .drag-handle{ position:absolute; top:6px; left:6px; width:18px; height:18px; border-radius:6px; background:var(--panel); border:1px solid var(--line); display:grid; place-content:center; cursor:grab }
+    .doc-widget .drag-handle::before{ content:'⋮⋮'; font-size:10px; color:var(--muted) }
+    .doc-widget .resize-handle{ position:absolute; right:6px; bottom:6px; width:14px; height:14px; border-right:2px solid var(--line); border-bottom:2px solid var(--line); cursor:nwse-resize; opacity:0.8 }
+    .doc-widget [contenteditable="true"]{ outline:none }
+    .doc-grid{ display:grid; gap:0 }
+    .doc-cell{ border:1px solid var(--line); padding:8px; min-height:28px }
+
+    /* Accessibility */
     :focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
-    #historyDrawer .plus-glow{ margin-right: 0 }
+
+    /* ======== MOBILE FINE-TUNING ======== */
+    @media (max-width: 1024px){
+      #page{ border-radius:10px }
+      #page .ql-editor{ padding:24px }
+      .mobile-bar{ display:flex !important }
+    }
+    @media (max-width: 768px){
+      /* force main padding to 0; pageWrap will control side padding */
+      main{ padding-left:0 !important; padding-right:0 !important }
+      :root{ --pagewrap-pad: var(--mobile-side-pad) }
+    }
   </style>
 </head>
 <body class="h-full selection:bg-white/20">
@@ -253,49 +271,41 @@
   <!-- ======= TOP BAR ======= -->
   <header class="sticky top-0 z-topbar">
     <div class="grad-bg">
-      <div class="glass border-b" style="border-color:var(--line)">
+      <div class="glass border-b" style="border-color: var(--line)">
         <div class="w-full flex items-center justify-between gap-3 px-4 py-2">
           <div class="flex items-center gap-3 min-w-0">
             <div class="w-8 h-8 rounded-xl bg-white/90 text-black grid place-content-center font-bold flex-shrink-0">OC</div>
             <div class="leading-tight truncate">
               <div class="text-white/95 truncate" style="color:var(--text)"><strong>OC Notes</strong></div>
-              <div class="text-xs" style="color:var(--muted)">Hybrid Word × Obsidian — local, private</div>
+              <div class="text-xs truncate" style="color:var(--muted)">Hybrid Word × Obsidian — local, private</div>
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 min-w-0">
             <!-- Mobile hamburger only -->
-            <button id="menuBtn" class="lg:hidden px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-label="Open menu">☰</button>
+            <button id="menuBtn" class="lg:hidden px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex-shrink-0" style="border-color:var(--line)" aria-label="Open history">☰</button>
 
             <!-- Desktop actions only -->
-            <div class="hidden lg:flex items-center gap-2 top-actions">
+            <div class="hidden lg:flex items-center top-actions min-w-0">
               <button id="toggleSidebar" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">History</button>
               <button id="newBtn"   class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center" style="border-color:var(--line)"><span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>New</button>
               <button id="openBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Open…</button>
               <button id="saveBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Save ⌘S</button>
 
-              <!-- Export -->
+              <!-- Export (fixed-position popup to avoid clipping/overlap) -->
               <div class="relative">
                 <button id="exportBtn" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-haspopup="menu" aria-expanded="false">Export ▼</button>
-                <div id="exportMenu" class="hidden absolute right-0 mt-2 w-56 menu-panel z-menu" role="menu" aria-label="Export options">
-                  <button class="menu-item" data-export="docx">Export as .docx (Word)</button>
-                  <button class="menu-item" data-export="pdf">Export as .pdf</button>
-                  <button class="menu-item" data-export="html">Export as .html</button>
-                  <button class="menu-item" data-export="json">Export project (.ocnote)</button>
-                </div>
               </div>
 
               <!-- Mode toggle -->
               <div class="ml-2 flex items-center rounded-xl glass-2 border overflow-hidden" style="border-color:var(--line)">
                 <button id="modeDoc" class="px-3 py-2 text-sm bg-white/10">Document</button>
                 <button id="modeCanvas" class="px-3 py-2 text-sm hover:bg-white/10">Canvas</button>
+                <button id="modeSettings" class="px-3 py-2 text-sm hover:bg-white/10">Settings</button>
               </div>
 
               <!-- Theme toggle -->
               <button id="themeBtn" title="Toggle Light/Dark" class="ml-2 px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">☀︎/🌙</button>
-
-              <!-- NEW: Settings -->
-              <button id="settingsBtn" title="Settings" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">⚙︎ Settings</button>
             </div>
           </div>
         </div>
@@ -317,8 +327,8 @@
   <!-- ======= TITLE ROW ======= -->
   <section class="max-w-[1200px] mx-auto px-4 mt-3">
     <div class="flex items-center gap-2">
-      <div class="title-pill glass-2 border px-3 py-1.5" style="border-color:var(--line)">
-        <input id="docTitle" class="bg-transparent outline-none text-lg md:text-xl font-semibold" style="color:var(--text)" placeholder="Untitled note" />
+      <div class="title-pill glass-2 border px-3 py-1.5 w-full md:w-auto" style="border-color:var(--line)">
+        <input id="docTitle" class="bg-transparent outline-none text-lg md:text-xl font-semibold w-full" style="color:var(--text)" placeholder="Untitled note" />
       </div>
       <span id="dirtyDot" class="w-2.5 h-2.5 rounded-full bg-rose-400/80 hidden" title="Unsaved changes"></span>
     </div>
@@ -328,7 +338,11 @@
   <main class="max-w-[1200px] mx-auto px-4 mt-2">
     <!-- Document Mode -->
     <div id="docPanel" class="space-y-3">
-      <div id="quillToolbar" class="rounded-2xl toolbar-scroll"></div>
+      <div id="quillToolbar" class="rounded-2xl toolbar-scroll">
+        <div class="glass border rounded-2xl toolbar-shell" style="border-color:var(--line)">
+          <!-- Toolbar contents injected by Quill init; shell ensures layout -->
+        </div>
+      </div>
       <div id="pageWrap" class="rounded-2xl glass border" style="border-color:var(--line)">
         <div id="page"><div id="quillEditor"></div></div>
       </div>
@@ -337,12 +351,12 @@
     <!-- Canvas Mode -->
     <div id="canvasPanel" class="hidden">
       <!-- Canvas Toolbar -->
-      <div id="canvasToolDock" class="canvas-toolbar glass rounded-2xl border p-2 flex flex-wrap items-center gap-2" style="border-color:var(--line)">
+      <div id="canvasToolDock" class="canvas-toolbar glass rounded-2xl border p-2 flex items-center gap-2" style="border-color:var(--line)">
         <button class="tool" data-tool="select" title="V">Move</button>
         <button class="tool" data-tool="text"   title="T">Text</button>
         <button class="tool" data-tool="sticky" title="N">Sticky</button>
         <button class="tool" data-tool="draw"   title="P">Pen</button>
-        <button class="tool" data-tool="erase"  title="⌫">Delete</button>
+        <button class="tool" data-tool="erase"  title="⌫">Erase</button>
 
         <div class="ml-2 flex items-center gap-2">
           <label class="text-sm" style="color:var(--muted)">Brush</label>
@@ -364,7 +378,7 @@
           <input id="gridSize" type="number" value="24" min="4" max="200" class="w-16 glass-2 border rounded-lg px-2 py-1 text-sm" style="border-color:var(--line)" />
         </div>
 
-        <!-- Canvas BG -->
+        <!-- Canvas BG (applied to host, not Fabric background — preserves eraser) -->
         <div class="ml-4 flex items-center gap-2">
           <label class="text-sm" style="color:var(--muted)">Canvas BG</label>
           <input id="canvasBg" type="color" value="#0f0f11" class="w-9 h-9 p-0 bg-transparent border rounded-lg" style="border-color:var(--line)" />
@@ -404,6 +418,38 @@
         <canvas id="ocCanvas"></canvas>
       </div>
     </div>
+
+    <!-- Settings Mode -->
+    <div id="settingsPanel" class="hidden">
+      <div class="glass rounded-2xl border p-4 md:p-6" style="border-color:var(--line)">
+        <h2 class="text-xl font-semibold mb-3" style="color:var(--text)">Settings</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="glass-2 border rounded-xl p-3" style="border-color:var(--line)">
+            <div class="font-medium mb-2" style="color:var(--text)">Mobile document side padding</div>
+            <div class="text-sm mb-3" style="color:var(--muted)">Controls the visual padding on either side of the document on small screens. Default: 12px.</div>
+            <div class="flex items-center gap-2">
+              <input id="setMobilePad" type="range" min="8" max="28" step="1" class="w-56" />
+              <input id="setMobilePadNumber" type="number" min="8" max="28" step="1" class="w-16 glass-2 border rounded-lg px-2 py-1 text-sm" style="border-color:var(--line)" />
+              <span class="text-sm" style="color:var(--muted)">px</span>
+            </div>
+          </div>
+
+          <div class="glass-2 border rounded-xl p-3" style="border-color:var(--line)">
+            <div class="font-medium mb-2" style="color:var(--text)">Interface density</div>
+            <div class="text-sm mb-3" style="color:var(--muted)">Choose a toolbar density that fits your preference.</div>
+            <div class="flex gap-2">
+              <button id="densityCozy" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Cozy</button>
+              <button id="densityCompact" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Compact</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex items-center justify-end gap-2">
+          <button id="settingsBack" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Back</button>
+          <button id="settingsApply" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Apply</button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <!-- ======= HISTORY DRAWER ======= -->
@@ -433,42 +479,14 @@
     </div>
   </div>
 
-  <!-- ======= SETTINGS PAGE (NEW) ======= -->
-  <div id="settingsPage" class="fixed inset-0 hidden z-[80]">
-    <div class="absolute inset-0 bg-black/60" data-close-settings></div>
-    <div class="absolute inset-x-0 top-[env(safe-area-inset-top,0)] md:top-12 mx-auto max-w-[820px]">
-      <div class="mx-3 md:mx-auto glass border rounded-2xl shadow-xl" style="border-color:var(--line)">
-        <div class="flex items-center justify-between px-4 py-3 border-b" style="border-color:var(--line)">
-          <div class="text-lg font-semibold">Settings</div>
-          <button id="settingsClose" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Close</button>
-        </div>
-
-        <div class="p-4 space-y-6">
-          <!-- Mobile doc padding control -->
-          <div class="glass-2 border rounded-xl p-4" style="border-color:var(--line)">
-            <div class="font-medium mb-2">Mobile Document Side Padding</div>
-            <div class="text-sm mb-3" style="color:var(--muted)">Controls the space on the left/right of the document preview on small screens. Lower values make the page scale larger.</div>
-            <div class="flex items-center gap-3 flex-wrap">
-              <input id="padSlider" type="range" min="0" max="40" step="1" class="w-[min(100%,420px)]" />
-              <div class="flex items-center gap-2">
-                <input id="padNumber" type="number" min="0" max="40" step="1" class="w-20 glass-2 border rounded-lg px-2 py-1" style="border-color:var(--line)" />
-                <span class="text-sm">px</span>
-              </div>
-              <button id="padReset" class="ml-auto px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Reset to 12px</button>
-            </div>
-          </div>
-
-          <!-- (Room for more settings later) -->
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Hidden file input -->
   <input id="openFile" type="file" accept=".ocnote,application/json" class="hidden" />
 
   <!-- Offscreen export staging (used by PDF if ever needed) -->
   <div id="exportStage" style="position:absolute; left:-9999px; top:0; width:816px; background:#fff; color:#000; padding:24px;"></div>
+
+  <!-- Floating export menu (portal) -->
+  <div id="exportMenu" class="hidden fixed z-pop menu-panel w-56"></div>
 
   <script>
     /* =============== UTILITIES =============== */
@@ -481,8 +499,8 @@
     const escapeHtml = (str) => (str+'').replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;","&gt;":"&gt;","\"":"&quot;","'":"&#39;"}[s]));
     const niceDate = (iso) => { try { return new Date(iso).toLocaleString(); } catch { return iso; } }
     const isSafari = () => /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const debounce = (fn, ms=300) => { let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args),ms) }; }
 
-    function debounce(fn, ms=300){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args),ms) }; }
     function hexToRGBA(hex, a=1){
       try{
         let h = hex.replace('#','');
@@ -491,11 +509,7 @@
         return `rgba(${r},${g},${b},${a})`;
       }catch{ return `rgba(255,255,255,${a})`; }
     }
-    function currentUIColor(){
-      const bc = document.getElementById('brushColor');
-      const val = bc?.value || '#ffffff';
-      return val;
-    }
+
     function flash(msg) {
       const div = document.createElement('div');
       div.textContent = msg;
@@ -509,17 +523,20 @@
       const a = document.createElement('a');
       const url = URL.createObjectURL(blob);
       const canDownload = 'download' in a && !isSafari();
-
       if (canDownload) {
         a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 4000);
       } else {
         try {
-          const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(blob); });
-          const win = window.open(data, '_blank'); if (!win) location.href = data;
-        } finally { setTimeout(() => URL.revokeObjectURL(url), 0); }
+          const data = await blobToDataURL(blob);
+          const win = window.open(data, '_blank');
+          if (!win) location.href = data;
+        } finally {
+          setTimeout(() => URL.revokeObjectURL(url), 0);
+        }
       }
     }
+    const blobToDataURL = (blob) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
 
     /* =============== PERSISTENCE =============== */
     const store = {
@@ -540,8 +557,9 @@
       saveSidebarOpen(v){ localStorage.setItem(this.sidebarKey, v ? '1':'0'); },
       loadSidebarOpen(){ return localStorage.getItem(this.sidebarKey) !== '0'; },
       loadSettings(){
-        try { return Object.assign({ mobileDocPadPx: 12 }, JSON.parse(localStorage.getItem(this.settingsKey) || '{}')); }
-        catch { return { mobileDocPadPx: 12 }; }
+        let s = {};
+        try{ s = JSON.parse(localStorage.getItem(this.settingsKey)) || {}; } catch{}
+        return Object.assign({ mobileSidePad: 12, density: 'cozy' }, s);
       },
       saveSettings(s){ localStorage.setItem(this.settingsKey, JSON.stringify(s)); }
     };
@@ -549,7 +567,7 @@
     /* =============== STATE =============== */
     const state = {
       id: uid(),
-      mode: 'doc', // 'doc' | 'canvas'
+      mode: 'doc', // 'doc' | 'canvas' | 'settings'
       dirty: false,
       quill: null,
       canvas: null,
@@ -562,7 +580,7 @@
       grid: { show:false, snap:false, size:24, targetTol:10 },
       sidebarOpen: true,
       docScale: 1,
-      settings: store.loadSettings(),
+      settings: store.loadSettings()
     };
     const markDirty = () => { state.dirty = true; $('#dirtyDot').classList.remove('hidden'); try { autoSave && autoSave(); } catch {} }
     const clearDirty = () => { state.dirty = false; $('#dirtyDot').classList.add('hidden'); }
@@ -580,53 +598,69 @@
         if (t==='light' && m.media?.includes('light')) m.setAttribute('content', '#f5f5f7');
       });
     }
-    function toggleTheme() {
-      applyTheme((document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark');
+    const toggleTheme = () => applyTheme((document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark');
+
+    /* =============== SETTINGS APPLY =============== */
+    function applySettingsToUI(){
+      // Mobile side padding variable
+      document.documentElement.style.setProperty('--mobile-side-pad', (state.settings.mobileSidePad || 12) + 'px');
+
+      // Density: tweak toolbar padding globally
+      const compact = state.settings.density === 'compact';
+      document.documentElement.style.setProperty('--toolbar-gap', compact ? '4px':'6px');
+      // Quill control sizing is already compact; we slightly reduce paddings:
+      const qtl = $('.ql-toolbar'); if (qtl) qtl.style.setProperty('padding', compact ? '6px' : '8px');
+
+      // Reflect in Settings form
+      const range = $('#setMobilePad'); const num = $('#setMobilePadNumber');
+      if (range) range.value = String(state.settings.mobileSidePad || 12);
+      if (num)   num.value   = String(state.settings.mobileSidePad || 12);
     }
 
     /* =============== QUILL =============== */
     function renderQuillToolbar() {
-      $('#quillToolbar').innerHTML = `
-        <div class="glass border rounded-2xl p-2 flex items-center gap-2 toolbar-scroll" style="border-color:var(--line)">
-          <span class="ql-formats">
-            <select class="ql-font">
-              <option selected value="system" data-label="System">System</option>
-              <option value="serif" data-label="Serif">Serif</option>
-              <option value="mono" data-label="Mono">Mono</option>
-              <option value="georgia" data-label="Georgia">Georgia</option>
-              <option value="garamond" data-label="Garamond">Garamond</option>
-            </select>
-          </span>
-          <span class="ql-formats">
-            <select class="ql-header"><option selected></option><option value="1">H1</option><option value="2">H2</option><option value="3">H3</option></select>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-bold"></button><button class="ql-italic"></button>
-            <button class="ql-underline"></button><button class="ql-strike"></button>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button>
-          </span>
-          <span class="ql-formats"><select class="ql-align"></select></span>
-          <span class="ql-formats"><button class="ql-link"></button><button class="ql-image"></button><button class="ql-code-block"></button></span>
-          <span class="ql-formats"><button class="ql-indent" value="-1"></button><button class="ql-indent" value="+1"></button></span>
-          <span class="ql-formats"><select class="ql-color"></select><select class="ql-background"></select></span>
-          <span class="ql-formats">
-            <select class="ql-size">
-              <option value="12px">12</option>
-              <option value="14px">14</option>
-              <option selected value="16px">16</option>
-              <option value="18px">18</option>
-              <option value="24px">24</option>
-              <option value="32px">32</option>
-              <option value="48px">48</option>
-            </select>
-          </span>
-          <span class="ql-formats"><button class="ql-clean"></button></span>
-          <span class="ql-formats">
-            <button id="docInsertInvoice" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Invoice</button>
-          </span>
-        </div>`;
+      // Insert Apple-clean toolbar controls into existing shell
+      const shell = $('#quillToolbar .toolbar-shell');
+      shell.innerHTML = `
+        <span class="ql-formats">
+          <select class="ql-font">
+            <option selected value="system" data-label="System">System</option>
+            <option value="serif" data-label="Serif">Serif</option>
+            <option value="mono" data-label="Mono">Mono</option>
+            <option value="georgia" data-label="Georgia">Georgia</option>
+            <option value="garamond" data-label="Garamond">Garamond</option>
+          </select>
+        </span>
+        <span class="ql-formats">
+          <select class="ql-header"><option selected></option><option value="1">H1</option><option value="2">H2</option><option value="3">H3</option></select>
+        </span>
+        <span class="ql-formats">
+          <button class="ql-bold"></button><button class="ql-italic"></button>
+          <button class="ql-underline"></button><button class="ql-strike"></button>
+        </span>
+        <span class="ql-formats">
+          <button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button>
+        </span>
+        <span class="ql-formats"><select class="ql-align"></select></span>
+        <span class="ql-formats"><button class="ql-link"></button><button class="ql-image"></button><button class="ql-code-block"></button></span>
+        <span class="ql-formats"><button class="ql-indent" value="-1"></button><button class="ql-indent" value="+1"></button></span>
+        <span class="ql-formats"><select class="ql-color"></select><select class="ql-background"></select></span>
+        <span class="ql-formats">
+          <select class="ql-size">
+            <option value="12px">12</option>
+            <option value="14px">14</option>
+            <option selected value="16px">16</option>
+            <option value="18px">18</option>
+            <option value="24px">24</option>
+            <option value="32px">32</option>
+            <option value="48px">48</option>
+          </select>
+        </span>
+        <span class="ql-formats"><button class="ql-clean"></button></span>
+        <span class="ql-formats">
+          <button id="docInsertInvoice" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Invoice</button>
+        </span>
+      `;
     }
     function initQuill() {
       renderQuillToolbar();
@@ -637,15 +671,14 @@
       Size.whitelist = ['12px','14px','16px','18px','24px','32px','48px'];
       Quill.register(Size, true);
 
-      const q = new Quill('#quillEditor', { theme:'snow', modules:{ toolbar:'#quillToolbar' } });
+      const q = new Quill('#quillEditor', { theme:'snow', modules:{ toolbar:'#quillToolbar .toolbar-shell' } });
       state.quill = q;
       q.on('text-change', markDirty);
 
-      const btnDocInvoice = document.getElementById('docInsertInvoice');
-      if (btnDocInvoice) btnDocInvoice.addEventListener('click', () => insertInvoiceDoc());
+      $('#docInsertInvoice')?.addEventListener('click', () => insertInvoiceDoc());
 
       function insertInvoiceDoc(){
-        const col = currentUIColor();
+        const col = ($('#brushColor')?.value) || '#3B82F6';
         const border = hexToRGBA(col, 0.35);
         const header = `<div style=\"text-align:center; font-weight:700; font-size:22px; margin-bottom:8px; color:${col}\">INVOICE</div>`;
         const parties = `<div style=\"display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; color:${col}\"><div contenteditable=\"true\">From:<br>Your Company<br>Address</div><div contenteditable=\"true\">Bill To:<br>Client Name<br>Address</div></div>`;
@@ -660,7 +693,7 @@
         markDirty();
       }
 
-      // Doc widget interactions: drag to reorder; resize
+      // Doc widget interactions (drag/resize)
       (function wireDocWidgets(){
         const root = q.root;
         let dragEl = null;
@@ -702,17 +735,16 @@
         });
         root.addEventListener('pointerup', () => { if (rs.el) { rs.el=null; markDirty(); } });
         root.addEventListener('pointercancel', () => { rs.el=null; });
-
         root.addEventListener('input', (e) => { if (e.target.closest('.doc-widget')) markDirty(); });
       })();
     }
 
-    /* =============== FABRIC CANVAS =============== */
+    /* =============== FABRIC CANVAS (with robust Eraser) =============== */
     function initCanvas() {
       const host = $('#canvasHost');
       const cEl = $('#ocCanvas');
       const canvas = new fabric.Canvas(cEl, {
-        backgroundColor: '#0f0f11',
+        backgroundColor: null,               // keep transparent; host provides BG (eraser-safe)
         selection: true,
         preserveObjectStacking: true,
         perPixelTargetFind: true,
@@ -721,11 +753,12 @@
       state.canvas = canvas;
       try { canvas.upperCanvasEl.setAttribute('tabindex','1'); } catch {}
 
+      // History helpers
       const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
       function pushHistory(){
         if (!canvas || state.suppressHistory) return;
         try {
-          const snap = { json: canvas.toJSON(SAVE_PROPS), bg: canvas.backgroundColor || '#0f0f11' };
+          const snap = { json: canvas.toJSON(SAVE_PROPS) };
           state.hist.stack = state.hist.stack.slice(0, state.hist.idx + 1);
           state.hist.stack.push(snap);
           state.hist.idx = state.hist.stack.length - 1;
@@ -733,21 +766,22 @@
       }
       const pushHistoryDebounced = debounce(pushHistory, 250);
       canvas.__pushHistoryDebounced = pushHistoryDebounced;
+
       async function loadHistoryAt(idx){
         if (idx < 0 || idx >= state.hist.stack.length) return;
         const snap = state.hist.stack[idx];
         state.suppressHistory = true;
         try {
           await new Promise(res => canvas.loadFromJSON(snap.json, () => res()));
-          if (snap.bg) canvas.setBackgroundColor(snap.bg, canvas.renderAll.bind(canvas));
           canvas.requestRenderAll();
         } finally {
           state.suppressHistory = false;
         }
       }
-      async function undoCanvas(){ if (state.hist.idx > 0) { state.hist.idx--; await loadHistoryAt(state.hist.idx); } }
-      async function redoCanvas(){ if (state.hist.idx < state.hist.stack.length - 1) { state.hist.idx++; await loadHistoryAt(state.hist.idx); } }
+      const undoCanvas = async () => { if (state.hist.idx > 0) { state.hist.idx--; await loadHistoryAt(state.hist.idx); } }
+      const redoCanvas = async () => { if (state.hist.idx < state.hist.stack.length - 1) { state.hist.idx++; await loadHistoryAt(state.hist.idx); } }
 
+      // size
       const resize = () => {
         const vv = window.visualViewport;
         const vw = (vv?.width) ? Math.round(vv.width) : (host.clientWidth || window.innerWidth || 1200);
@@ -770,27 +804,55 @@
       canvas.freeDrawingBrush.width = 3;
       canvas.freeDrawingBrush.color = '#ffffff';
 
+      // Strong eraser support:
+      // 1) If fabric.EraserBrush exists: use it.
+      // 2) Else: use PencilBrush but set the created path's globalCompositeOperation to 'destination-out' so it truly erases pixels.
+      function setEraseBrush(){
+        canvas.isDrawingMode = true;
+        if (fabric.EraserBrush) {
+          canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
+          canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
+        } else {
+          canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
+          canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)';
+        }
+        canvas.defaultCursor = 'crosshair';
+      }
+
+      // Path handling
       canvas.on('path:created', (e) => {
         const p = e.path;
         const isErase = (state.currentTool === 'erase');
-        if (!isErase) {
-          p.set({
-            selectable:true, evented:true, hasControls:true, hasBorders:true,
-            hoverCursor:'move', fill:null, strokeUniform:true, erasable:true
-          });
-          p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
-        } else {
-          try { canvas.remove(p); } catch {}
+        if (isErase) {
+          // If EraserBrush exists, Fabric already did the right thing. Otherwise, make this path an eraser via gCO.
+          if (!fabric.EraserBrush) {
+            p.globalCompositeOperation = 'destination-out';
+            p.stroke = 'rgba(0,0,0,1)';
+            p.fill = null;
+            p.selectable = false; p.evented = false;
+            p.strokeUniform = true;
+          }
+          // keep the path so the erase effect persists / exports
+          markDirty(); pushHistoryDebounced();
           return;
         }
+        // Normal draw path polish
+        p.set({
+          selectable:true, evented:true, hasControls:true, hasBorders:true,
+          hoverCursor:'move', fill:null, strokeUniform:true, erasable:true
+        });
+        p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
         markDirty(); pushHistoryDebounced();
       });
 
+      // Interaction model
       canvas.on('mouse:down', (opt) => {
         try { if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } catch {}
         const target = opt.target;
         const pt = canvas.getPointer(opt.e);
 
+        // Space-pan start
         if (state.isSpacePanning) {
           canvas.isDragging = true;
           canvas.selection = false;
@@ -799,18 +861,22 @@
           return;
         }
 
-        // Touch quick-edit
+        // Move tool quick tap edit
         if (state.currentTool === 'select' && target && (target.type === 'textbox' || target.type === 'i-text')) {
           const isTouch = !!(opt.e && (opt.e.touches || opt.e.pointerType === 'touch'));
-          if (isTouch && !target.isEditing) {
-            canvas.setActiveObject(target);
-            target.enterEditing();
-            if (target.hiddenTextarea) { try { target.hiddenTextarea.focus(); } catch {} }
-            setTimeout(()=>{ try { target.hiddenTextarea && target.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
+          if (isTouch) {
+            if (!target.isEditing) {
+              canvas.setActiveObject(target);
+              target.enterEditing();
+              target.hiddenTextarea && target.hiddenTextarea.focus();
+              const len = target.text?.length ?? 0;
+              target.setSelectionStart(len); target.setSelectionEnd(len);
+            }
             return;
           }
         }
 
+        // Text placement
         if (state.currentTool === 'text') {
           if (target && target.type === 'textbox') {
             if (!target.isEditing) {
@@ -818,12 +884,10 @@
               target.enterEditing();
               target.hiddenTextarea && target.hiddenTextarea.focus();
               const len = target.text?.length ?? 0;
-              target.setSelectionStart(len);
-              target.setSelectionEnd(len);
+              target.setSelectionStart(len); target.setSelectionEnd(len);
             }
             return;
           }
-          if (target && target.type !== 'textbox') return;
           const tb = new fabric.Textbox('',
             { left: pt.x, top: pt.y, width: 320, fontSize: 20, editable: true,
               fill: $('#brushColor').value || '#ffffff',
@@ -832,14 +896,12 @@
             });
           canvas.add(tb);
           canvas.setActiveObject(tb);
-          tb.enterEditing();
-          if (tb.hiddenTextarea) { try { tb.hiddenTextarea.focus(); } catch {} }
-          setTimeout(()=>{ try { tb.hiddenTextarea && tb.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
-          canvas.requestRenderAll();
-          markDirty(); pushHistoryDebounced();
+          tb.enterEditing(); tb.hiddenTextarea && tb.hiddenTextarea.focus();
+          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
           return;
         }
 
+        // Sticky placement
         if (state.currentTool === 'sticky') {
           const sticky = new fabric.Textbox('',
             { left: pt.x, top: pt.y, width: 260, fontSize: 18, editable: true,
@@ -849,17 +911,15 @@
           canvas.add(sticky);
           canvas.setActiveObject(sticky);
           useTool('text');
-          sticky.enterEditing();
-          if (sticky.hiddenTextarea) { try { sticky.hiddenTextarea.focus(); } catch {} }
-          setTimeout(()=>{ try { sticky.hiddenTextarea && sticky.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
-          canvas.requestRenderAll();
-          markDirty(); pushHistoryDebounced();
+          sticky.enterEditing(); sticky.hiddenTextarea && sticky.hiddenTextarea.focus();
+          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
           return;
         }
       });
 
       canvas.on('text:changed', () => { markDirty(); pushHistoryDebounced(); });
 
+      // Space-pan move/end
       canvas.on('mouse:move', (opt) => {
         if (canvas.isDragging) {
           const v = canvas.viewportTransform;
@@ -874,6 +934,7 @@
         canvas.selection = (state.currentTool === 'select');
       });
 
+      // snap-to-grid
       function maybeSnap(target) {
         if (!state.grid.snap) return;
         const gs = state.grid.size;
@@ -885,6 +946,7 @@
       canvas.on('object:moving', (e) => { maybeSnap(e.target); });
       canvas.on('object:scaling', (e) => { maybeSnap(e.target); });
 
+      // grid overlay
       canvas.on('after:render', () => {
         if (!state.grid.show) return;
         const ctx = canvas.getContext();
@@ -897,12 +959,11 @@
         ctx.strokeStyle = 'rgba(255,255,255,0.08)';
         ctx.lineWidth = 1;
         for (let x = xStart; x < canvas.getWidth(); x += gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.getHeight()); ctx.stroke(); }
-        for (let y = yStart; y < canvas.getHeight(); y += gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(0,y); ctx.moveTo(0,y); ctx.lineTo(canvas.getWidth(),y); ctx.stroke(); }
+        for (let y = yStart; y < canvas.getHeight(); y += gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.getWidth(),y); ctx.stroke(); }
         ctx.restore();
       });
 
-      try { canvas.on('erasing:end', () => { markDirty(); pushHistoryDebounced(); }); } catch {}
-
+      // wheel zoom
       canvas.on('mouse:wheel', (opt) => {
         const delta = opt.e.deltaY;
         let zoom = state.zoom * (delta > 0 ? 0.95 : 1.05);
@@ -914,6 +975,7 @@
         opt.e.preventDefault(); opt.e.stopPropagation();
       });
 
+      // keys
       function isEditingCanvasText(){
         try{
           const obj = canvas.getActiveObject && canvas.getActiveObject();
@@ -954,11 +1016,17 @@
       window.addEventListener('keyup', (e) => {
         if (e.code === 'Space') {
           state.isSpacePanning = false;
-          canvas.defaultCursor = (state.currentTool === 'draw') ? 'crosshair' : 'default';
+          canvas.defaultCursor = (state.currentTool === 'draw' || state.currentTool === 'erase') ? 'crosshair' : 'default';
           canvas.selection = (state.currentTool === 'select');
         }
       });
 
+      // mark dirty on object changes
+      canvas.on('object:added', () => { markDirty(); pushHistoryDebounced(); });
+      canvas.on('object:modified', () => { markDirty(); pushHistoryDebounced(); });
+      canvas.on('object:removed', () => { markDirty(); pushHistoryDebounced(); });
+
+      // Tool buttons
       const toolBtns = $$('#canvasPanel .tool');
       const fsToolBtns = $$('#fsToolbar [data-tool]');
       toolBtns.forEach(btn => {
@@ -971,12 +1039,9 @@
         fsToolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === tool));
       };
       fsToolBtns.forEach(btn => btn.addEventListener('click', () => useTool(btn.dataset.tool)));
-      const fsUndo = document.getElementById('fsUndo');
-      if (fsUndo) fsUndo.addEventListener('click', undoCanvas);
-      const fsRedo = document.getElementById('fsRedo');
-      if (fsRedo) fsRedo.addEventListener('click', redoCanvas);
-      const fsInsertInvoice = document.getElementById('fsInsertInvoice');
-      if (fsInsertInvoice) fsInsertInvoice.addEventListener('click', () => insertInvoice());
+      $('#fsUndo')?.addEventListener('click', undoCanvas);
+      $('#fsRedo')?.addEventListener('click', redoCanvas);
+      $('#fsInsertInvoice')?.addEventListener('click', () => insertInvoice());
 
       function insertInvoice(){
         const items = [];
@@ -988,12 +1053,8 @@
         items.push(title, from, to);
         const headers = ['Item','Qty','Price','Amount'];
         const cols = headers.length; const rows = 5; const cellW = 140; const cellH = 34; const startX = cx - (cols*cellW)/2; const startY = y;
-        for (let i=0;i<=rows;i++){
-          const ly = startY + i*cellH; items.push(new fabric.Line([startX, ly, startX + cols*cellW, ly], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
-        }
-        for (let c=0;c<=cols;c++){
-          const lx = startX + c*cellW; items.push(new fabric.Line([lx, startY, lx, startY + rows*cellH], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
-        }
+        for (let i=0;i<=rows;i++){ const ly = startY + i*cellH; items.push(new fabric.Line([startX, ly, startX + cols*cellW, ly], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true })); }
+        for (let c=0;c<=cols;c++){ const lx = startX + c*cellW; items.push(new fabric.Line([lx, startY, lx, startY + rows*cellH], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true })); }
         headers.forEach((h,i)=>{ items.push(new fabric.Textbox(h, { left: startX + i*cellW + 6, top: startY + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', fontWeight:'600', erasable:true })); });
         for (let r=1; r<rows; r++){
           for (let c=0; c<cols; c++){
@@ -1010,6 +1071,7 @@
         canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
       }
 
+      // Controls
       $('#brushSize').addEventListener('input', (e) => {
         const sz = Number(e.target.value || 3);
         if (canvas.isDrawingMode) canvas.freeDrawingBrush.width = sz;
@@ -1030,10 +1092,7 @@
         const col = e.target.value || '#ffffff';
         applyBrushColor(col);
         const active = canvas.getActiveObjects();
-        if (active.length) {
-          active.forEach(o => applyColor(o, col));
-          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
-        }
+        if (active.length) { active.forEach(o => applyColor(o, col)); canvas.requestRenderAll(); markDirty(); pushHistoryDebounced(); }
         const fsColor = document.getElementById('fsColor'); if (fsColor) fsColor.value = col;
       });
       const fsColor = document.getElementById('fsColor');
@@ -1044,10 +1103,7 @@
           const bc = document.getElementById('brushColor'); if (bc) bc.value = col;
           applyBrushColor(col);
           const active = canvas.getActiveObjects();
-          if (active.length) {
-            active.forEach(o => applyColor(o, col));
-            canvas.requestRenderAll(); markDirty();
-          }
+          if (active.length) { active.forEach(o => applyColor(o, col)); canvas.requestRenderAll(); markDirty(); }
         };
         fsColor.addEventListener('input', onFsColor);
         fsColor.addEventListener('change', onFsColor);
@@ -1060,10 +1116,7 @@
           const main = document.getElementById('brushSize'); if (main) main.value = String(sz);
           if (canvas.isDrawingMode) canvas.freeDrawingBrush.width = sz;
           const active = canvas.getActiveObjects();
-          if (active.length) {
-            active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); });
-            canvas.requestRenderAll(); markDirty();
-          }
+          if (active.length) { active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); }); canvas.requestRenderAll(); markDirty(); }
         });
       }
       function applyColor(obj, col){
@@ -1073,35 +1126,24 @@
         else obj.set({ fill: col });
       }
       $('#clearCanvas').addEventListener('click', () => {
-        if (confirm('Clear the canvas?')) {
-          canvas.clear();
-          canvas.setBackgroundColor($('#canvasBg').value || '#0f0f11', canvas.renderAll.bind(canvas));
-          markDirty();
-        }
+        if (confirm('Clear the canvas?')) { canvas.clear(); markDirty(); }
       });
       $('#zoomIn').addEventListener('click', () => setZoom(state.zoom * 1.15));
       $('#zoomOut').addEventListener('click', () => setZoom(state.zoom / 1.15));
       $('#centerCanvas').addEventListener('click', resetViewport);
       $('#zoomLevel').addEventListener('change', (e) => setZoom(clamp((Number(e.target.value)||100)/100, 0.1, 5)));
 
-      function isFullscreen(){ return document.body.classList.contains('fs-canvas-on'); }
-      function enterFS(){
-        try { setMode && setMode('canvas'); } catch {}
-        document.body.classList.add('fs-canvas-on','fs-active');
-        const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Exit';
-      }
-      function exitFS(){
-        document.body.classList.remove('fs-canvas-on','fs-active');
-        const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Full';
-      }
-      function toggleFS(){ isFullscreen() ? exitFS() : enterFS(); }
-      const fsToolbarExit = document.getElementById('fsToolbarExit');
-      if (fsToolbarExit) fsToolbarExit.addEventListener('click', toggleFS);
+      // Fullscreen toggle
+      const isFullscreen = () => document.body.classList.contains('fs-canvas-on');
+      const enterFS = () => { setMode('canvas'); document.body.classList.add('fs-canvas-on','fs-active'); $('#fsToolbarExit').textContent='Exit'; resize(); }
+      const exitFS  = () => { document.body.classList.remove('fs-canvas-on','fs-active'); $('#fsToolbarExit').textContent='Full'; resize(); }
+      const toggleFS = () => isFullscreen() ? exitFS() : enterFS();
+      $('#fsToolbarExit')?.addEventListener('click', toggleFS);
       window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isFullscreen()) { e.preventDefault(); exitFS(); } });
       function setZoom(z){ state.zoom = clamp(z, 0.1, 5); const c = new fabric.Point(canvas.getWidth()/2, canvas.getHeight()/2); canvas.zoomToPoint(c, state.zoom); $('#zoomLevel').value = Math.round(state.zoom*100); }
       function resetViewport(){ state.zoom = 1; canvas.setViewportTransform([1,0,0,1,0,0]); $('#zoomLevel').value = 100; canvas.requestRenderAll(); }
 
-      // Touch: pinch-zoom + two-finger pan
+      // Touch pinch-zoom
       (function enablePinchZoom(){
         const target = canvas.upperCanvasEl;
         let t1=null, t2=null, lastDist=0, lastCenter=null;
@@ -1109,18 +1151,13 @@
         const center = (a,b)=> ({ x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2 });
         const toPoint = (c)=> new fabric.Point(c.x, c.y);
         target.addEventListener('touchstart', (e)=>{
-          if (e.touches.length===2){
-            t1 = e.touches[0]; t2 = e.touches[1];
-            lastDist = dist(t1,t2); lastCenter = center(t1,t2);
-            canvas.isDrawingMode = false; canvas.selection = false;
-          }
+          if (e.touches.length===2){ t1=e.touches[0]; t2=e.touches[1]; lastDist=dist(t1,t2); lastCenter=center(t1,t2); canvas.isDrawingMode=false; canvas.selection=false; }
         }, { passive:false });
         target.addEventListener('touchmove', (e)=>{
           if (e.touches.length===2){
             e.preventDefault();
-            t1 = e.touches[0]; t2 = e.touches[1];
-            const d = dist(t1,t2);
-            const c = center(t1,t2);
+            t1=e.touches[0]; t2=e.touches[1];
+            const d = dist(t1,t2); const c = center(t1,t2);
             const scale = d / (lastDist || d);
             const newZoom = clamp(canvas.getZoom()*scale, 0.1, 5);
             canvas.zoomToPoint(toPoint(c), newZoom);
@@ -1132,44 +1169,42 @@
         target.addEventListener('touchend', ()=>{ t1=t2=null; lastDist=0; lastCenter=null; canvas.selection = (state.currentTool==='select'); }, { passive:true });
       })();
 
+      // Grid & BG (BG applied to host, not canvas)
       $('#gridToggle').addEventListener('change', (e) => { state.grid.show = e.target.checked; canvas.requestRenderAll(); });
       $('#snapToggle').addEventListener('change', (e) => { state.grid.snap = e.target.checked; });
       $('#gridSize').addEventListener('change', (e) => { state.grid.size = clamp(Number(e.target.value)||24, 4, 200); canvas.requestRenderAll(); });
-      $('#canvasBg').addEventListener('input', (e) => {
-        canvas.setBackgroundColor(e.target.value || '#0f0f11', canvas.renderAll.bind(canvas)); markDirty(); pushHistoryDebounced();
-      });
+      $('#canvasBg').addEventListener('input', (e) => { $('#canvasHost').style.backgroundColor = e.target.value || '#0f0f11'; markDirty(); pushHistoryDebounced(); });
 
       function useTool(kind){
         state.currentTool = kind;
-        state.awaitingPlacement = null;
         canvas.isDrawingMode = false;
         canvas.defaultCursor = 'default';
         canvas.selection = (kind === 'select');
 
-        toolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === kind));
-        fsToolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === kind));
+        setToolActive(kind);
+
+        if (kind === 'select') return;
 
         if (kind === 'draw') {
-          if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) {
-            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-          }
           canvas.isDrawingMode = true;
+          if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
           canvas.freeDrawingBrush.color = $('#brushColor').value || '#ffffff';
           canvas.freeDrawingBrush.width = Number($('#brushSize').value || 3);
           canvas.defaultCursor = 'crosshair';
           return;
         }
-        if (kind === 'text' || kind === 'sticky') {
-          canvas.defaultCursor = 'crosshair';
-          return;
-        }
-        if (kind === 'erase') {
-          canvas.isDrawingMode = true;
-          try { canvas.freeDrawingBrush = new fabric.EraserBrush(canvas); } catch { canvas.freeDrawingBrush = new fabric.PencilBrush(canvas); }
-          canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
-          canvas.defaultCursor = 'crosshair';
-          return;
-        }
+
+        if (kind === 'text' || kind === 'sticky') { canvas.defaultCursor = 'crosshair'; return; }
+
+        if (kind === 'erase') { setEraseBrush(); return; }
+      }
+
+      // start in Move mode
+      function setToolActive(tool) {
+        const toolBtns = $$('#canvasPanel .tool');
+        const fsToolBtns = $$('#fsToolbar [data-tool]');
+        toolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === tool));
+        fsToolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === tool));
       }
       useTool('select');
       pushHistory();
@@ -1178,38 +1213,33 @@
     /* =============== MODE TOGGLE =============== */
     function setMode(m) {
       state.mode = m;
-      if (m==='doc') {
-        $('#docPanel').classList.remove('hidden');
-        $('#canvasPanel').classList.add('hidden');
-        $('#modeDoc').classList.add('bg-white/10');
-        $('#modeCanvas').classList.remove('bg-white/10');
-        const mb = document.getElementById('mbMode'); if (mb) mb.textContent = 'Doc';
-        try { window.ocFitDoc && window.ocFitDoc(); } catch {}
-      } else {
-        $('#docPanel').classList.add('hidden');
-        $('#canvasPanel').classList.remove('hidden');
-        $('#modeCanvas').classList.add('bg-white/10');
-        $('#modeDoc').classList.remove('bg-white/10');
-        state.canvas && state.canvas.requestRenderAll();
-        const mb = document.getElementById('mbMode'); if (mb) mb.textContent = 'Canvas';
-        if (window.innerWidth <= 1024 && !document.body.classList.contains('fs-canvas-on')) {
-          document.body.classList.add('fs-canvas-on','fs-active');
-          const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Exit';
-        }
-      }
+      const panels = { doc:'#docPanel', canvas:'#canvasPanel', settings:'#settingsPanel' };
+      Object.values(panels).forEach(sel => $(sel).classList.add('hidden'));
+      $(panels[m]).classList.remove('hidden');
+
+      // Update segmented control
+      $('#modeDoc').classList.toggle('bg-white/10', m==='doc');
+      $('#modeCanvas').classList.toggle('bg-white/10', m==='canvas');
+      $('#modeSettings').classList.toggle('bg-white/10', m==='settings');
+
+      const mb = $('#mbMode'); if (mb) mb.textContent = m==='doc' ? 'Doc' : (m==='canvas' ? 'Canvas' : 'Settings');
+
+      if (m==='doc') { try { window.ocFitDoc && window.ocFitDoc(); } catch {} }
+      if (m==='canvas') { state.canvas && state.canvas.requestRenderAll(); }
+      if (m==='settings') { applySettingsToUI(); }
     }
 
     /* =============== SNAPSHOTS / SAVE / LOAD =============== */
     function getSnapshot() {
       const title = ($('#docTitle').value || '').trim() || 'Untitled note';
       const docHTML = state.quill ? state.quill.root.innerHTML : '';
-      let canvasJSON = null, canvasPNG = null, canvasBG = '#0f0f11';
+      let canvasJSON = null, canvasPNG = null, canvasBG = null;
       if (state.canvas) {
-        canvasJSON = state.canvas.toJSON(['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform']);
+        canvasJSON = state.canvas.toJSON(['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation']);
         try { canvasPNG = state.canvas.toDataURL({ format:'png', multiplier: 2, quality: 1.0 }); } catch { canvasPNG = null; }
-        canvasBG = state.canvas.backgroundColor || '#0f0f11';
+        canvasBG = $('#canvasBg')?.value || '#0f0f11';
       }
-      return { id: state.id, title, updatedAt: nowISO(), docHTML, canvasJSON, canvasPNG, canvasBG, version: 5 };
+      return { id: state.id, title, updatedAt: nowISO(), docHTML, canvasJSON, canvasPNG, canvasBG, version: 6 };
     }
     function applySnapshot(snap) {
       state.id = snap.id || uid();
@@ -1218,11 +1248,12 @@
       if (state.canvas && snap.canvasJSON) {
         state.suppressHistory = true;
         state.canvas.loadFromJSON(snap.canvasJSON, () => {
-          if (snap.canvasBG) state.canvas.setBackgroundColor(snap.canvasBG, state.canvas.renderAll.bind(state.canvas));
+          $('#canvasBg').value = snap.canvasBG || '#0f0f11';
+          $('#canvasHost').style.backgroundColor = snap.canvasBG || '#0f0f11';
           state.canvas.requestRenderAll();
           try {
             const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
-            const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: state.canvas.backgroundColor || '#0f0f11' };
+            const initial = { json: state.canvas.toJSON(SAVE_PROPS) };
             state.hist.stack = [initial]; state.hist.idx = 0;
           } catch {}
           state.suppressHistory = false;
@@ -1239,10 +1270,10 @@
       if (state.canvas) {
         state.canvas.clear();
         const bg = $('#canvasBg').value || '#0f0f11';
-        state.canvas.setBackgroundColor(bg, state.canvas.renderAll.bind(state.canvas));
+        $('#canvasHost').style.backgroundColor = bg;
         try {
           const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
-          const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: state.canvas.backgroundColor || bg };
+          const initial = { json: state.canvas.toJSON(SAVE_PROPS) };
           state.hist.stack = [initial]; state.hist.idx = 0;
         } catch {}
       }
@@ -1257,7 +1288,7 @@
       store.upsert(snap); clearDirty(); flash('Saved'); refreshHistoryUI(); refreshSidebarUI();
     }
     const autoSave = debounce(() => { if (state.dirty) saveDocument(); }, 1500);
-    function openFromChooser(){ $('#openFile').click(); }
+    const openFromChooser = () => $('#openFile').click();
     function importProject(file) {
       const reader = new FileReader();
       reader.onload = () => {
@@ -1292,7 +1323,6 @@
     /* =============== EXPORT ACTIONS =============== */
     async function exportDocx() {
       try {
-        if (!window.htmlDocx || !window.htmlDocx.asBlob) throw new Error('html-docx library not available');
         const snap = getSnapshot();
         const html = buildStandaloneHTML(snap);
         let blob = window.htmlDocx.asBlob(html, {
@@ -1306,10 +1336,9 @@
         flash('Exported .docx');
       } catch (err) {
         console.error('DOCX export failed', err);
-        alert('DOCX export failed. Try disabling content blockers or using a modern browser. Error: ' + (err?.message || err));
+        alert('DOCX export failed. Error: ' + (err?.message || err));
       }
     }
-
     async function exportPDF() {
       const snap = getSnapshot();
       const html = buildStandaloneHTML(snap);
@@ -1322,7 +1351,6 @@
       }).from(html).save();
       flash('Exported .pdf');
     }
-
     function exportHTML() {
       const snap = getSnapshot();
       const html = buildStandaloneHTML(snap);
@@ -1330,7 +1358,6 @@
       downloadBlob(blob, safeFileName(snap.title)+'.html');
       flash('Exported .html');
     }
-
     function exportJSON() {
       const snap = getSnapshot();
       const blob = new Blob([JSON.stringify(snap,null,2)], {type:'application/json'});
@@ -1352,11 +1379,11 @@
             row.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
             row.innerHTML = `
               <div class="flex items-center justify-between gap-3">
-                <div>
-                  <div class="font-medium" style="color:var(--text)">${escapeHtml(item.title||'Untitled')}</div>
+                <div class="min-w-0">
+                  <div class="font-medium truncate" style="color:var(--text)">${escapeHtml(item.title||'Untitled')}</div>
                   <div class="text-xs" style="color:var(--muted)">${niceDate(item.updatedAt)}</div>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-shrink-0">
                   <button class="px-2 py-1 glass-2 hover:bg-white/20 rounded-lg text-xs border" data-open-id="${item.id}" style="border-color:var(--line)">Open</button>
                   <button class="px-2 py-1 glass-2 hover:bg-white/20 rounded-lg text-xs border" data-download-id="${item.id}" style="border-color:var(--line)">Export .ocnote</button>
                 </div>
@@ -1399,56 +1426,64 @@
           });
     }
 
-    /* =============== SETTINGS =============== */
-    function applySettingsToDOM(){
-      const pad = clamp(Number(state.settings.mobileDocPadPx)||12, 0, 40);
-      document.documentElement.style.setProperty('--mobile-doc-pad', pad + 'px');
-      const sNum = $('#padNumber'), sSlide = $('#padSlider');
-      if (sNum) sNum.value = String(pad);
-      if (sSlide) sSlide.value = String(pad);
-      try { window.ocFitDoc && window.ocFitDoc(); } catch {}
-    }
-    function openSettings(){ $('#settingsPage').classList.remove('hidden'); document.body.style.overflow='hidden'; applySettingsToDOM(); }
-    function closeSettings(){ $('#settingsPage').classList.add('hidden'); document.body.style.overflow=''; }
-    function wireSettings(){
-      $('#settingsBtn')?.addEventListener('click', openSettings);
-      $('#settingsClose')?.addEventListener('click', closeSettings);
-      $$('[data-close-settings]').forEach(el => el.addEventListener('click', closeSettings));
-
-      const sNum = $('#padNumber'), sSlide = $('#padSlider'), sReset = $('#padReset');
-      const onChange = (val) => {
-        state.settings.mobileDocPadPx = clamp(Number(val)||12, 0, 40);
-        store.saveSettings(state.settings);
-        applySettingsToDOM();
-      };
-      sNum?.addEventListener('input', (e)=> onChange(e.target.value));
-      sSlide?.addEventListener('input', (e)=> onChange(e.target.value));
-      sReset?.addEventListener('click', ()=> onChange(12));
-    }
-
     /* =============== MENUS / SHORTCUTS =============== */
     function wireMenus() {
       const expBtn = $('#exportBtn'), expMenu = $('#exportMenu');
-      const closeMenus = () => { expMenu.classList.add('hidden'); expBtn.setAttribute('aria-expanded','false'); };
-      expBtn.addEventListener('click', (e) => { e.stopPropagation(); const open = expMenu.classList.toggle('hidden'); expBtn.setAttribute('aria-expanded', (!open).toString()); });
-      document.addEventListener('click', (e) => { if (!expBtn.contains(e.target) && !expMenu.contains(e.target)) closeMenus(); });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
 
-      expMenu.querySelectorAll('[data-export]').forEach(btn => btn.addEventListener('click', () => {
-        closeMenus();
+      function positionPortalMenu(btn, menu){
+        const r = btn.getBoundingClientRect();
+        menu.style.top = (r.bottom + 8) + 'px';
+        const menuW = menu.offsetWidth || 224;
+        const left = Math.min(Math.max(12, r.right - menuW), window.innerWidth - menuW - 12);
+        menu.style.left = left + 'px';
+      }
+      function openExportMenu(){
+        expMenu.innerHTML = `
+          <div role="menu" aria-label="Export options">
+            <button class="menu-item" data-export="docx">Export as .docx (Word)</button>
+            <button class="menu-item" data-export="pdf">Export as .pdf</button>
+            <button class="menu-item" data-export="html">Export as .html</button>
+            <button class="menu-item" data-export="json">Export project (.ocnote)</button>
+          </div>`;
+        expMenu.classList.remove('hidden');
+        expBtn.setAttribute('aria-expanded','true');
+        // ensure dimensions before positioning
+        requestAnimationFrame(()=>positionPortalMenu(expBtn, expMenu));
+      }
+      function closeExportMenu(){
+        expMenu.classList.add('hidden');
+        expBtn.setAttribute('aria-expanded','false');
+      }
+
+      expBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (expMenu.classList.contains('hidden')) openExportMenu();
+        else closeExportMenu();
+      });
+      document.addEventListener('click', (e) => {
+        if (!expMenu.classList.contains('hidden')) closeExportMenu();
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeExportMenu(); });
+
+      expMenu.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-export]'); if (!btn) return;
+        closeExportMenu();
         const k = btn.getAttribute('data-export');
         if (k==='docx') exportDocx();
         if (k==='pdf')  exportPDF();
         if (k==='html') exportHTML();
         if (k==='json') exportJSON();
-      }));
+      });
 
+      // History drawer
       $$('#historyDrawer [data-close-history]').forEach(el => el.addEventListener('click', closeHistory));
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHistory(); });
 
-      const sbNew = document.getElementById('sbNew'); if (sbNew) sbNew.addEventListener('click', newDocument);
-      const drawerNew = document.getElementById('drawerNew'); if (drawerNew) drawerNew.addEventListener('click', newDocument);
+      // Sidebar & Drawer new
+      $('#sbNew')?.addEventListener('click', newDocument);
+      $('#drawerNew')?.addEventListener('click', newDocument);
 
+      // Drawer export taps
       $$('#historyDrawer [data-drawer-export]').forEach(btn => btn.addEventListener('click', () => {
         const k = btn.getAttribute('data-drawer-export');
         if (k==='docx') exportDocx();
@@ -1465,13 +1500,13 @@
       });
     }
 
-    /* =============== LAYOUT FIT (Word-like) =============== */
+    /* =============== DOC FIT (Apple-clean scaling) =============== */
     function fitDoc(){
-      const wrap = document.getElementById('pageWrap'); if (!wrap) return;
-      const page = document.getElementById('page'); if (!page) return;
+      const wrap = $('#pageWrap'); if (!wrap) return;
+      const page = $('#page'); if (!page) return;
       const headerEl = document.querySelector('header');
-      const tb = document.getElementById('quillToolbar');
-      const titleSec = document.getElementById('docTitle')?.closest('section');
+      const tb = $('#quillToolbar');
+      const titleSec = $('#docTitle')?.closest('section');
       const hH = headerEl?.offsetHeight || 0;
       const tH = tb?.offsetHeight || 0;
       const titleH = titleSec?.offsetHeight || 0;
@@ -1484,46 +1519,69 @@
     }
     window.ocFitDoc = fitDoc;
 
+    /* =============== SETTINGS WIRING =============== */
+    function wireSettings(){
+      const range = $('#setMobilePad'), num = $('#setMobilePadNumber');
+      const applyInputsToState = () => {
+        const v = clamp(Number(range.value||state.settings.mobileSidePad), 8, 28);
+        state.settings.mobileSidePad = v;
+        num.value = String(v);
+      };
+      const syncRangeNum = (from) => {
+        const v = clamp(Number(from.value||state.settings.mobileSidePad), 8, 28);
+        range.value = String(v); num.value = String(v);
+      };
+      range?.addEventListener('input', () => { applyInputsToState(); document.documentElement.style.setProperty('--mobile-side-pad', state.settings.mobileSidePad + 'px'); fitDoc(); });
+      num?.addEventListener('input', () => { syncRangeNum(num); document.documentElement.style.setProperty('--mobile-side-pad', num.value + 'px'); fitDoc(); });
+
+      $('#densityCozy')?.addEventListener('click', () => { state.settings.density='cozy'; applySettingsToUI(); });
+      $('#densityCompact')?.addEventListener('click', () => { state.settings.density='compact'; applySettingsToUI(); });
+
+      $('#settingsApply')?.addEventListener('click', () => { store.saveSettings(state.settings); flash('Settings saved'); fitDoc(); });
+      $('#settingsBack')?.addEventListener('click', () => setMode('doc'));
+    }
+
     /* =============== BOOT =============== */
     function boot() {
       applyTheme(store.loadTheme() || 'dark');
+      applySettingsToUI();
       initQuill();
       initCanvas();
 
       // header controls
       $('#modeDoc').addEventListener('click', () => setMode('doc'));
       $('#modeCanvas').addEventListener('click', () => setMode('canvas'));
+      $('#modeSettings').addEventListener('click', () => setMode('settings'));
+
       $('#newBtn').addEventListener('click', newDocument);
       $('#saveBtn').addEventListener('click', saveDocument);
       $('#openBtn').addEventListener('click', openFromChooser);
       $('#openFile').addEventListener('change', (e) => { const f = e.target.files?.[0]; if (f) importProject(f); e.target.value=''; });
 
-      const menuBtn = document.getElementById('menuBtn');
-      if (menuBtn) menuBtn.addEventListener('click', openHistory);
+      // history
+      $('#menuBtn')?.addEventListener('click', openHistory);
       $('#searchHistory').addEventListener('input', debounce(refreshHistoryUI, 120));
-      const sbs = document.getElementById('sidebarSearch');
-      if (sbs) sbs.addEventListener('input', debounce(refreshSidebarUI, 120));
+      $('#sidebarSearch')?.addEventListener('input', debounce(refreshSidebarUI, 120));
 
-      const titleEl = $('#docTitle');
-      titleEl.addEventListener('input', markDirty);
+      // title dirty tracking
+      const titleEl = $('#docTitle'); titleEl.addEventListener('input', markDirty);
       titleEl.addEventListener('focus', () => { if (titleEl.value.trim() === 'Untitled note') { titleEl.value = ''; } });
 
+      // theme
       $('#themeBtn').addEventListener('click', toggleTheme);
 
-      // Settings wiring + initial apply
+      // Mobile bar wiring
+      $('#mbNew')?.addEventListener('click', newDocument);
+      $('#mbSave')?.addEventListener('click', saveDocument);
+      $('#mbExport')?.addEventListener('click', (e)=>{ e.stopPropagation(); $('#exportBtn')?.click(); });
+      $('#mbMode')?.addEventListener('click', ()=> setMode(state.mode==='doc' ? 'canvas' : (state.mode==='canvas' ? 'settings' : 'doc')));
+      $('#mbTheme')?.addEventListener('click', toggleTheme);
+
       wireSettings();
-      applySettingsToDOM();
+      wireMenus();
+      wireShortcuts();
 
-      // Mobile bar wiring (kept minimal)
-      const mbNew = document.getElementById('mbNew');
-      const mbMode = document.getElementById('mbMode');
-      const mbTheme = document.getElementById('mbTheme');
-      if (mbNew) mbNew.addEventListener('click', newDocument);
-      if (mbMode) mbMode.addEventListener('click', ()=> setMode(state.mode==='doc' ? 'canvas':'doc'));
-      if (mbTheme) mbTheme.addEventListener('click', toggleTheme);
-
-      wireMenus(); wireShortcuts();
-
+      // autosave
       setInterval(()=>{ if (state.dirty) saveDocument(); }, 30000);
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && state.dirty) { try { const snap = getSnapshot(); store.upsert(snap); clearDirty(); } catch {} } });
       window.addEventListener('beforeunload', () => { if (state.dirty) { try { const snap = getSnapshot(); store.upsert(snap); } catch {} } });
@@ -1532,30 +1590,25 @@
       refreshHistoryUI();
       refreshSidebarUI();
 
+      // measure header height to position sidebar
       const header = document.querySelector('header');
       if (header) document.documentElement.style.setProperty('--topbar-h', header.offsetHeight + 'px');
 
+      // sidebar state
       state.sidebarOpen = store.loadSidebarOpen();
       const applySidebarPadding = () => {
         const wide = window.innerWidth >= 1024;
-        if (wide && state.sidebarOpen) {
-          document.body.classList.add('with-sidebar');
-          document.body.classList.remove('sidebar-collapsed');
-        } else {
-          document.body.classList.remove('with-sidebar');
-          document.body.classList.add('sidebar-collapsed');
-        }
+        if (wide && state.sidebarOpen) { document.body.classList.add('with-sidebar'); document.body.classList.remove('sidebar-collapsed'); }
+        else { document.body.classList.remove('with-sidebar'); document.body.classList.add('sidebar-collapsed'); }
       };
       applySidebarPadding();
       window.addEventListener('resize', debounce(() => { applySidebarPadding(); fitDoc(); }, 120));
+      $('#toggleSidebar')?.addEventListener('click', () => { state.sidebarOpen = !state.sidebarOpen; store.saveSidebarOpen(state.sidebarOpen); applySidebarPadding(); fitDoc(); });
 
-      const sbToggle = document.getElementById('toggleSidebar');
-      if (sbToggle) sbToggle.addEventListener('click', () => { state.sidebarOpen = !state.sidebarOpen; store.saveSidebarOpen(state.sidebarOpen); applySidebarPadding(); fitDoc(); });
-
+      // Ensure page fits viewport like Word (always one 8.5x11 on screen)
       fitDoc();
-      window.addEventListener('resize', debounce(fitDoc, 150));
 
-      // Service worker (optional)
+      // PWA service worker
       if ('serviceWorker' in navigator) {
         try { navigator.serviceWorker.register('./sw.js'); } catch(e) { console.warn('SW registration failed', e); }
       }
@@ -1565,7 +1618,7 @@
   </script>
 
   <!-- Mobile bottom bar -->
-  <nav class="mobile-bar fixed left-1/2 -translate-x-1/2 bottom-3 px-2 py-1.5 glass border rounded-2xl shadow-lg flex items-center gap-1 z-[70]" style="border-color:var(--line); display:none">
+  <nav class="mobile-bar fixed left-1/2 -translate-x-1/2 bottom-3 safe-pad-bottom px-2 py-1.5 glass border rounded-2xl shadow-lg flex items-center gap-1 z-[70]" style="border-color:var(--line); display:none">
     <button id="mbNew" class="px-2 py-1.5 text-sm rounded-xl hover:bg-white/10 flex items-center" aria-label="New">
       <span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
     </button>
