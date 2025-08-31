@@ -49,23 +49,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html-docx-js/0.4.1/html-docx.js"></script>
 
   <style>
-    :root{
-      /* Theme */
+    :root {
       --bg:#0b0b0b; --text:#ededed; --muted:rgba(255,255,255,0.7);
       --panel:rgba(255,255,255,0.06); --panel-2:rgba(255,255,255,0.04);
       --line:rgba(255,255,255,0.12); --accent:#3B82F6;
       --shadow-paper:0 10px 30px rgba(0,0,0,0.18);
       --paper:#111214; --paper-text:#f2f2f2; --paper-edge:rgba(255,255,255,0.06);
-
-      /* Layout paddings */
-      --doc-pad-x: 24px;              /* desktop/laptop side padding around preview */
-      --doc-pad-y: 16px;
-      --mobile-doc-pad: 12px;         /* default mobile side padding target */
-      --outer-pad-mobile: 0px;        /* strip outer container padding on mobile */
-
-      /* Toolbar density */
-      --btn-px: 12px;
-      --btn-py: 8px;
+      /* New: padding controls */
+      --mobile-doc-pad: 12px; /* user-adjustable in Settings */
+      --doc-side-pad: 16px;   /* desktop default */
     }
     html[data-theme="light"]{
       --bg:#f5f5f7; --text:#0a0a0a; --muted:rgba(0,0,0,0.65);
@@ -98,53 +90,45 @@
       border:1px solid var(--line);background:var(--panel-2);color:var(--text);
       position:relative; z-index:60; overflow:visible;
     }
+    .ql-toolbar .ql-formats{ margin-right:6px; flex:0 0 auto } /* no shrink */
     .ql-toolbar .ql-picker,.ql-toolbar button{color:var(--text)}
     .ql-snow .ql-stroke{stroke:var(--text)} .ql-snow .ql-fill{fill:var(--text)}
     .ql-container.ql-snow{border:1px solid var(--line);background:transparent;color:var(--text)}
     .ql-editor{color:var(--paper-text)}
-    .ql-editor img{max-width:100%;height:auto}
-    .ql-editor pre{white-space:pre-wrap}
-    .ql-editor table{max-width:100%}
-    .toolbar-scroll > .glass{min-width:0}
-    .toolbar-scroll .glass{
-      display:flex; flex-wrap:wrap; gap:8px; align-items:center;
-      overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch;
-      scrollbar-gutter: stable both-edges;
-    }
-    .ql-toolbar .ql-formats{ margin-right:6px; flex:0 0 auto }
-    .ql-toolbar .ql-picker-label, .ql-toolbar button{ padding:4px 6px }
-
-    /* Selection colors */
+    /* Clear, visible selection in both themes */
     html[data-theme="dark"] ::selection{ background: rgba(59,130,246,0.35); color: inherit }
     html[data-theme="light"] ::selection{ background: rgba(10,132,255,0.28); color: inherit }
     html[data-theme="dark"] .ql-editor ::selection{ background: rgba(59,130,246,0.35) }
     html[data-theme="light"] .ql-editor ::selection{ background: rgba(10,132,255,0.28) }
 
-    /* Page wrap w/ adjustable side padding (safe-area aware) */
+    /* Page wrapper: new side padding logic */
     #pageWrap{
-      display:flex; justify-content:center; align-items:flex-start; width:100%;
-      padding: var(--doc-pad-y) calc(var(--doc-pad-x) + env(safe-area-inset-left,0px)) var(--doc-pad-y) calc(var(--doc-pad-x) + env(safe-area-inset-right,0px));
-      overflow-x:hidden;
+      display:flex; justify-content:center; align-items:flex-start;
+      padding-top:16px; padding-bottom:16px;
+      padding-left: var(--doc-side-pad); padding-right: var(--doc-side-pad);
+      overflow-x:hidden; width:100%;
       background:linear-gradient(var(--bg),var(--bg)) padding-box,
                  radial-gradient(600px 200px at 50% -50px, rgba(255,255,255,0.08), transparent) border-box;
     }
+    /* Mobile pad becomes adjustable var */
+    @media (max-width: 768px){
+      :root { --doc-side-pad: var(--mobile-doc-pad); }
+    }
+
     #page{
       width:816px; min-height:1056px; background:var(--paper);
       border:1px solid var(--paper-edge); border-radius:12px; box-shadow:var(--shadow-paper);
       overflow:visible; position:relative; transform-origin: top center; margin:0 auto;
     }
-    #page .ql-editor{min-height:calc(1056px - 2in); padding:1in; font-size:16px; line-height:1.6; word-break:break-word}
-
+    #page .ql-editor{min-height:calc(1056px - 2in); padding:1in; font-size:16px; line-height:1.6}
+    /* Title pill */
     .title-pill{ display:inline-flex; align-items:center; border-radius:9999px }
     #docTitle{ width:auto; max-width:60ch }
     #canvasHost{min-height:calc(100vh - 260px)}
-
     input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0}
     input[type=number]{-moz-appearance:textfield; appearance:textfield}
-
     .z-topbar{z-index:50}.z-menu{z-index:55}.z-drawer{z-index:60}
-
-    /* Active tool state */
+    /* Active tool glow */
     .tool-active{
       background: linear-gradient(135deg, #22d3ee 0%, #10b981 50%, #22d3ee 100%) !important;
       background-size: 200% 200%;
@@ -153,20 +137,29 @@
       box-shadow: 0 0 0 1px rgba(255,255,255,0.18) inset, 0 6px 18px rgba(34,211,238,0.25);
       border-color: rgba(255,255,255,0.25) !important;
     }
-    @keyframes ocGradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 
-    /* Canvas */
-    #canvasHost{ position:relative; overflow:hidden }
-    #canvasHost canvas{ touch-action:none; display:block; max-width:100% }
+    /* Minimal Quill styles for exported HTML rendering */
+    .ql-align-center{text-align:center} .ql-align-right{text-align:right} .ql-align-justify{text-align:justify}
+    .ql-indent-1{margin-left:3em} .ql-indent-2{margin-left:6em} .ql-indent-3{margin-left:9em}
 
-    /* Mobile-first toolbar polish */
-    .top-actions{
-      display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end;
-      gap:8px; max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;
-      padding-block: 2px;
+    /* Responsive layout: toolbars never overflow */
+    .toolbar-scroll{ overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; position:relative; z-index:60; display:flex; }
+    .toolbar-scroll > *{ flex: 0 0 auto }
+    .top-actions{ flex-wrap: wrap; justify-content:flex-end; gap:8px }
+    .top-actions > *{ flex:0 0 auto } /* prevent squeezing */
+    .canvas-toolbar{ overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; white-space:nowrap; max-width:100% }
+    .canvas-toolbar > *{ flex-shrink:0 }
+    .canvas-fs-toolbar{ max-width: calc(100vw - 16px); overflow-x:auto; -webkit-overflow-scrolling:touch }
+
+    @media (max-width: 1024px){
+      #page{ border-radius:10px }
+      #page .ql-editor{ padding:24px }
+      /* Title + main keep comfortable edges; pageWrap controls doc padding */
+      section.max-w-\[1200px\]{ padding-left:16px; padding-right:16px }
+      .mobile-bar{ display:flex !important }
     }
 
-    /* Fullscreen canvas mode */
+    /* Print styles */
     body.fs-canvas-on{ overflow:hidden }
     body.fs-canvas-on header,
     body.fs-canvas-on #sidebarDock,
@@ -177,27 +170,21 @@
     body.fs-canvas-on #canvasHost{ position:fixed; inset:0; border-radius:0 }
     .canvas-fs-exit{ position:absolute; top:12px; right:12px; display:none; z-index:1001 }
     body.fs-canvas-on .canvas-fs-exit, body.fs-active .canvas-fs-exit{ display:inline-flex }
-    .canvas-fs-toolbar{
-      position:absolute; top:calc(env(safe-area-inset-top, 0px) + 12px); left:50%; transform: translateX(-50%);
-      display:flex; z-index:1002; max-width:calc(100vw - 16px); overflow-x:auto; -webkit-overflow-scrolling:touch;
-      gap:4px;
-    }
+    .canvas-fs-toolbar{ position:absolute; top:calc(env(safe-area-inset-top, 0px) + 12px); left:50%; transform: translateX(-50%); display:flex; z-index:1002 }
     body.fs-canvas-on .canvas-toolbar, body.fs-active .canvas-toolbar{ display:none !important }
+    #canvasHost canvas{ touch-action: none }
+    .canvas-fs-toolbar button, .canvas-fs-toolbar input{ touch-action: manipulation }
 
-    /* Print */
     @media print{
       body, html{ background:#fff; color:#000 }
-      header, #canvasPanel, #historyDrawer, .mobile-bar, #settingsPanel{ display:none !important }
+      header, #canvasPanel, #historyDrawer, .mobile-bar, #settingsPage{ display:none !important }
       main{ margin:0; padding:0 }
       #pageWrap{ background:#fff; box-shadow:none; border:none; padding:0 }
       #page{ width:816px; min-height:1056px; border:none; box-shadow:none }
       #page .ql-editor{ padding:1in; color:#000 }
     }
 
-    /* Safe area for notches */
-    .safe-pad-bottom{ padding-bottom: env(safe-area-inset-bottom) }
-
-    /* Sidebar (desktop) */
+    /* Sidebar (Desktop) */
     @media (min-width: 1024px){
       body.with-sidebar{ padding-left: 300px }
       body.with-sidebar header{ margin-left: -300px; width: calc(100% + 300px) }
@@ -211,6 +198,7 @@
     .note-row:hover{ background-color: rgba(255,255,255,0.06) }
     .note-row.active{ outline:1px solid var(--line); background-color: rgba(255,255,255,0.08) }
 
+    /* Glowing blue/green plus */
     .plus-glow{
       display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; margin-right:8px;
       border-radius:999px; color:white; font-weight:700; font-size:14px;
@@ -221,8 +209,13 @@
     }
     .plus-glow svg{ width:14px; height:14px; display:block }
     .mobile-bar .plus-glow{ margin-right:0 }
+    @keyframes ocGradientShift{
+      0%{ background-position: 0% 50% }
+      50%{ background-position: 100% 50% }
+      100%{ background-position: 0% 50% }
+    }
 
-    /* Quill font + size labels */
+    /* Quill pickers */
     .ql-snow .ql-picker.ql-font .ql-picker-label::before,
     .ql-snow .ql-picker.ql-font .ql-picker-item::before { content: attr(data-label); }
     .ql-font-system{ font-family: ui-sans-serif, SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol; }
@@ -230,59 +223,29 @@
     .ql-font-mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
     .ql-font-georgia{ font-family: Georgia, Cambria, "Times New Roman", Times, serif; }
     .ql-font-garamond{ font-family: Garamond, Baskerville, "Times New Roman", Times, serif; }
-    .ql-size-12px{ font-size:12px; } .ql-size-14px{ font-size:14px; } .ql-size-16px{ font-size:16px; }
-    .ql-size-18px{ font-size:18px; } .ql-size-24px{ font-size:24px; } .ql-size-32px{ font-size:32px; } .ql-size-48px{ font-size:48px; }
+    .ql-size-12px{ font-size:12px; }
+    .ql-size-14px{ font-size:14px; }
+    .ql-size-16px{ font-size:16px; }
+    .ql-size-18px{ font-size:18px; }
+    .ql-size-24px{ font-size:24px; }
+    .ql-size-32px{ font-size:32px; }
+    .ql-size-48px{ font-size:48px; }
 
+    /* Menu panel */
     .menu-panel{ backdrop-filter: blur(12px); background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,0.35); border-radius: 12px; overflow: hidden; }
     .menu-item{ width:100%; text-align:left; padding:8px 12px; word-break:break-word }
     .menu-item:hover{ background: rgba(255,255,255,0.10); }
 
-    /* Canvas toolbar (non-FS) */
-    .canvas-toolbar{
-      overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; white-space:nowrap; max-width:100%;
-      gap:8px;
-    }
-    .canvas-toolbar > *{ flex-shrink:0 }
-
-    /* Quill picker dropdown within viewport */
+    /* Picker dropdown fixes */
     .ql-snow .ql-picker{ color: var(--text); }
     .ql-snow .ql-picker-label{ padding: 6px 10px; border:none }
-    .ql-snow .ql-picker-options{ background: var(--panel-2); border:1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); padding:6px; z-index: 1000; max-width:90vw }
+    .ql-snow .ql-picker-options{ background: var(--panel-2); border:1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); padding:6px; z-index: 1000; }
     .ql-snow .ql-picker-item{ padding: 6px 10px; border-radius: 8px }
     .ql-snow .ql-picker-item:hover{ background: rgba(255,255,255,0.10); }
 
+    /* Accessible focus ring */
     :focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
     #historyDrawer .plus-glow{ margin-right: 0 }
-
-    /* MOBILE REFINEMENTS */
-    @media (max-width: 1024px){
-      /* Replace desktop side padding with user setting */
-      :root{ --doc-pad-x: var(--mobile-doc-pad) }
-      /* Remove outer container padding so preview true-sides = setting */
-      #mainWrap{ padding-left: var(--outer-pad-mobile) !important; padding-right: var(--outer-pad-mobile) !important; }
-      #titleWrap{ padding-left: 12px !important; padding-right: 12px !important; }
-
-      #page{ border-radius:10px }
-      #page .ql-editor{ padding:24px }
-      .toolbar-scroll .glass{ padding-inline: 8px }
-      .toolbar-scroll{ overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; position:relative; z-index:60 }
-      .toolbar-scroll::-webkit-scrollbar{ height:6px }
-      .top-actions{ flex-wrap: wrap; justify-content:flex-end }
-      .mobile-bar{ display:flex !important }
-    }
-
-    /* Settings panel */
-    #settingsPanel{
-      position:fixed; inset:0; display:none; z-index:80;
-      background: color-mix(in srgb, var(--bg) 70%, transparent);
-      backdrop-filter: blur(10px);
-    }
-    #settingsCard{
-      width:min(680px, 92vw); max-height: 84vh; overflow:auto;
-      margin: max(8vh, 40px) auto 24px; padding: 20px;
-      border:1px solid var(--line); border-radius:16px;
-      background: var(--panel); box-shadow: 0 30px 80px rgba(0,0,0,0.45);
-    }
   </style>
 </head>
 <body class="h-full selection:bg-white/20">
@@ -290,29 +253,29 @@
   <!-- ======= TOP BAR ======= -->
   <header class="sticky top-0 z-topbar">
     <div class="grad-bg">
-      <div class="glass border-b" style="border-color: var(--line)">
+      <div class="glass border-b" style="border-color:var(--line)">
         <div class="w-full flex items-center justify-between gap-3 px-4 py-2">
           <div class="flex items-center gap-3 min-w-0">
-            <div class="w-8 h-8 rounded-xl bg-white/90 text-black grid place-content-center font-bold shrink-0">OC</div>
+            <div class="w-8 h-8 rounded-xl bg-white/90 text-black grid place-content-center font-bold flex-shrink-0">OC</div>
             <div class="leading-tight truncate">
-              <div class="text-white/95" style="color:var(--text)"><strong>OC Notes</strong></div>
-              <div class="text-xs truncate" style="color:var(--muted)">Hybrid Word × Obsidian — local, private</div>
+              <div class="text-white/95 truncate" style="color:var(--text)"><strong>OC Notes</strong></div>
+              <div class="text-xs" style="color:var(--muted)">Hybrid Word × Obsidian — local, private</div>
             </div>
           </div>
 
-          <div class="flex items-center gap-2 min-w-0">
+          <div class="flex items-center gap-2">
             <!-- Mobile hamburger only -->
-            <button id="menuBtn" class="lg:hidden px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm shrink-0" style="border-color:var(--line)" aria-label="Open history">☰</button>
+            <button id="menuBtn" class="lg:hidden px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-label="Open menu">☰</button>
 
-            <!-- Desktop actions -->
-            <div class="hidden lg:flex items-center top-actions min-w-0">
-              <button id="toggleSidebar" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm shrink-0" style="border-color:var(--line)">History</button>
-              <button id="newBtn"   class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center shrink-0" style="border-color:var(--line)"><span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>New</button>
-              <button id="openBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm shrink-0" style="border-color:var(--line)">Open…</button>
-              <button id="saveBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm shrink-0" style="border-color:var(--line)">Save ⌘S</button>
+            <!-- Desktop actions only -->
+            <div class="hidden lg:flex items-center gap-2 top-actions">
+              <button id="toggleSidebar" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">History</button>
+              <button id="newBtn"   class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center" style="border-color:var(--line)"><span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>New</button>
+              <button id="openBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Open…</button>
+              <button id="saveBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Save ⌘S</button>
 
               <!-- Export -->
-              <div class="relative shrink-0">
+              <div class="relative">
                 <button id="exportBtn" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-haspopup="menu" aria-expanded="false">Export ▼</button>
                 <div id="exportMenu" class="hidden absolute right-0 mt-2 w-56 menu-panel z-menu" role="menu" aria-label="Export options">
                   <button class="menu-item" data-export="docx">Export as .docx (Word)</button>
@@ -323,14 +286,16 @@
               </div>
 
               <!-- Mode toggle -->
-              <div class="ml-2 flex items-center rounded-xl glass-2 border overflow-hidden shrink-0" style="border-color:var(--line)">
+              <div class="ml-2 flex items-center rounded-xl glass-2 border overflow-hidden" style="border-color:var(--line)">
                 <button id="modeDoc" class="px-3 py-2 text-sm bg-white/10">Document</button>
                 <button id="modeCanvas" class="px-3 py-2 text-sm hover:bg-white/10">Canvas</button>
               </div>
 
-              <!-- Theme & Settings -->
-              <button id="themeBtn" title="Toggle Light/Dark" class="ml-2 px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm shrink-0" style="border-color:var(--line)">☀︎/🌙</button>
-              <button id="settingsBtn" title="Settings" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm shrink-0" style="border-color:var(--line)">Settings</button>
+              <!-- Theme toggle -->
+              <button id="themeBtn" title="Toggle Light/Dark" class="ml-2 px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">☀︎/🌙</button>
+
+              <!-- NEW: Settings -->
+              <button id="settingsBtn" title="Settings" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">⚙︎ Settings</button>
             </div>
           </div>
         </div>
@@ -350,7 +315,7 @@
   </aside>
 
   <!-- ======= TITLE ROW ======= -->
-  <section id="titleWrap" class="max-w-[1200px] mx-auto px-4 mt-3">
+  <section class="max-w-[1200px] mx-auto px-4 mt-3">
     <div class="flex items-center gap-2">
       <div class="title-pill glass-2 border px-3 py-1.5" style="border-color:var(--line)">
         <input id="docTitle" class="bg-transparent outline-none text-lg md:text-xl font-semibold" style="color:var(--text)" placeholder="Untitled note" />
@@ -360,7 +325,7 @@
   </section>
 
   <!-- ======= MAIN PANELS ======= -->
-  <main id="mainWrap" class="max-w-[1200px] mx-auto px-4 mt-2">
+  <main class="max-w-[1200px] mx-auto px-4 mt-2">
     <!-- Document Mode -->
     <div id="docPanel" class="space-y-3">
       <div id="quillToolbar" class="rounded-2xl toolbar-scroll"></div>
@@ -372,7 +337,7 @@
     <!-- Canvas Mode -->
     <div id="canvasPanel" class="hidden">
       <!-- Canvas Toolbar -->
-      <div id="canvasToolDock" class="canvas-toolbar glass rounded-2xl border p-2 flex items-center gap-2" style="border-color:var(--line)">
+      <div id="canvasToolDock" class="canvas-toolbar glass rounded-2xl border p-2 flex flex-wrap items-center gap-2" style="border-color:var(--line)">
         <button class="tool" data-tool="select" title="V">Move</button>
         <button class="tool" data-tool="text"   title="T">Text</button>
         <button class="tool" data-tool="sticky" title="N">Sticky</button>
@@ -418,8 +383,8 @@
       </div>
 
       <!-- Canvas Surface -->
-      <div id="canvasHost" class="glass rounded-2xl border mt-3" style="border-color:var(--line)">
-        <div id="fsToolbar" class="canvas-fs-toolbar glass border rounded-xl px-2 py-1.5 items-center gap-1" style="border-color:var(--line)">
+      <div id="canvasHost" class="glass rounded-2xl border mt-3 overflow-hidden" style="border-color:var(--line); position:relative">
+        <div id="fsToolbar" class="canvas-fs-toolbar glass border rounded-xl px-2 py-1.5 flex items-center gap-1" style="border-color:var(--line)">
           <button id="fsToolbarExit" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Full</button>
           <div class="h-5 w-px bg-white/10 mx-1"></div>
           <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="select">Move</button>
@@ -468,37 +433,32 @@
     </div>
   </div>
 
-  <!-- ======= SETTINGS PAGE (Modal) ======= -->
-  <div id="settingsPanel" aria-modal="true" role="dialog">
-    <div id="settingsCard" class="glass">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-xl font-semibold" style="color:var(--text)">Settings</h2>
-        <div class="flex items-center gap-2">
+  <!-- ======= SETTINGS PAGE (NEW) ======= -->
+  <div id="settingsPage" class="fixed inset-0 hidden z-[80]">
+    <div class="absolute inset-0 bg-black/60" data-close-settings></div>
+    <div class="absolute inset-x-0 top-[env(safe-area-inset-top,0)] md:top-12 mx-auto max-w-[820px]">
+      <div class="mx-3 md:mx-auto glass border rounded-2xl shadow-xl" style="border-color:var(--line)">
+        <div class="flex items-center justify-between px-4 py-3 border-b" style="border-color:var(--line)">
+          <div class="text-lg font-semibold">Settings</div>
           <button id="settingsClose" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Close</button>
         </div>
-      </div>
 
-      <div class="grid gap-4">
-        <!-- Mobile doc padding -->
-        <div class="glass-2 rounded-xl border p-3" style="border-color:var(--line)">
-          <div class="font-medium mb-1" style="color:var(--text)">Mobile document side padding</div>
-          <div class="text-sm mb-2" style="color:var(--muted)">Controls the space to the left/right of the page preview on screens ≤ 1024px. Default: 12px</div>
-          <div class="flex items-center gap-3 flex-wrap">
-            <input id="setMobilePad" type="range" min="0" max="48" value="12" class="w-[260px]">
-            <input id="setMobilePadNum" type="number" min="0" max="48" value="12" class="w-20 glass-2 border rounded-lg px-2 py-1 text-sm" style="border-color:var(--line)">
-            <button id="setMobilePadReset" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Reset to 12</button>
+        <div class="p-4 space-y-6">
+          <!-- Mobile doc padding control -->
+          <div class="glass-2 border rounded-xl p-4" style="border-color:var(--line)">
+            <div class="font-medium mb-2">Mobile Document Side Padding</div>
+            <div class="text-sm mb-3" style="color:var(--muted)">Controls the space on the left/right of the document preview on small screens. Lower values make the page scale larger.</div>
+            <div class="flex items-center gap-3 flex-wrap">
+              <input id="padSlider" type="range" min="0" max="40" step="1" class="w-[min(100%,420px)]" />
+              <div class="flex items-center gap-2">
+                <input id="padNumber" type="number" min="0" max="40" step="1" class="w-20 glass-2 border rounded-lg px-2 py-1" style="border-color:var(--line)" />
+                <span class="text-sm">px</span>
+              </div>
+              <button id="padReset" class="ml-auto px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Reset to 12px</button>
+            </div>
           </div>
-        </div>
 
-        <!-- Optional: density toggle -->
-        <div class="glass-2 rounded-xl border p-3" style="border-color:var(--line)">
-          <div class="font-medium mb-1" style="color:var(--text)">Toolbar density</div>
-          <div class="text-sm mb-2" style="color:var(--muted)">Adjust button padding in toolbars.</div>
-          <div class="flex items-center gap-2">
-            <button data-density="compact" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Compact</button>
-            <button data-density="comfortable" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Comfortable</button>
-            <button data-density="default" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Default</button>
-          </div>
+          <!-- (Room for more settings later) -->
         </div>
       </div>
     </div>
@@ -531,6 +491,11 @@
         return `rgba(${r},${g},${b},${a})`;
       }catch{ return `rgba(255,255,255,${a})`; }
     }
+    function currentUIColor(){
+      const bc = document.getElementById('brushColor');
+      const val = bc?.value || '#ffffff';
+      return val;
+    }
     function flash(msg) {
       const div = document.createElement('div');
       div.textContent = msg;
@@ -540,47 +505,20 @@
       setTimeout(()=>div.remove(), 1300);
     }
 
-    // robust script loader
-    function loadScript(src){
-      return new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = src; s.async = true; s.onload = res; s.onerror = () => rej(new Error('Failed to load '+src));
-        document.head.appendChild(s);
-      });
-    }
-    async function ensureHtmlDocx(){
-      if (window.htmlDocx && typeof window.htmlDocx.asBlob === 'function') return true;
-      try{
-        await loadScript('https://cdn.jsdelivr.net/npm/html-docx-js@0.4.1/dist/html-docx.js');
-      }catch{}
-      return !!(window.htmlDocx && typeof window.htmlDocx.asBlob === 'function');
-    }
-
-    // download helpers
     async function downloadBlob(blob, filename) {
       const a = document.createElement('a');
       const url = URL.createObjectURL(blob);
       const canDownload = 'download' in a && !isSafari();
+
       if (canDownload) {
         a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 4000);
       } else {
         try {
-          const data = await blobToDataURL(blob);
-          const win = window.open(data, '_blank');
-          if (!win) location.href = data;
-        } finally {
-          setTimeout(() => URL.revokeObjectURL(url), 0);
-        }
+          const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(blob); });
+          const win = window.open(data, '_blank'); if (!win) location.href = data;
+        } finally { setTimeout(() => URL.revokeObjectURL(url), 0); }
       }
-    }
-    function blobToDataURL(blob){
-      return new Promise((res, rej) => {
-        const fr = new FileReader();
-        fr.onload = () => res(fr.result);
-        fr.onerror = rej;
-        fr.readAsDataURL(blob);
-      });
     }
 
     /* =============== PERSISTENCE =============== */
@@ -601,8 +539,11 @@
       loadTheme(){ return localStorage.getItem(this.themeKey); },
       saveSidebarOpen(v){ localStorage.setItem(this.sidebarKey, v ? '1':'0'); },
       loadSidebarOpen(){ return localStorage.getItem(this.sidebarKey) !== '0'; },
-      saveSettings(s){ localStorage.setItem(this.settingsKey, JSON.stringify(s)); },
-      loadSettings(){ try{ return JSON.parse(localStorage.getItem(this.settingsKey)) || {}; }catch{return {}} }
+      loadSettings(){
+        try { return Object.assign({ mobileDocPadPx: 12 }, JSON.parse(localStorage.getItem(this.settingsKey) || '{}')); }
+        catch { return { mobileDocPadPx: 12 }; }
+      },
+      saveSettings(s){ localStorage.setItem(this.settingsKey, JSON.stringify(s)); }
     };
 
     /* =============== STATE =============== */
@@ -615,12 +556,13 @@
       hist: { stack: [], idx: -1 },
       suppressHistory: false,
       currentTool: 'select',
+      awaitingPlacement: null,
       zoom: 1,
       isSpacePanning: false,
       grid: { show:false, snap:false, size:24, targetTol:10 },
       sidebarOpen: true,
       docScale: 1,
-      settings: { mobilePad: 12, density: 'default' }
+      settings: store.loadSettings(),
     };
     const markDirty = () => { state.dirty = true; $('#dirtyDot').classList.remove('hidden'); try { autoSave && autoSave(); } catch {} }
     const clearDirty = () => { state.dirty = false; $('#dirtyDot').classList.add('hidden'); }
@@ -631,6 +573,7 @@
       if (t === 'dark') document.documentElement.classList.add('dark');
       else document.documentElement.classList.remove('dark');
       store.saveTheme(t);
+      // update theme-color meta
       const metaTags = document.querySelectorAll('meta[name="theme-color"]');
       metaTags.forEach(m => {
         if (t==='dark' && m.media?.includes('dark')) m.setAttribute('content', '#0b0b0b');
@@ -641,48 +584,10 @@
       applyTheme((document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark');
     }
 
-    /* =============== SETTINGS =============== */
-    function applySettingsToCSS(){
-      document.documentElement.style.setProperty('--mobile-doc-pad', state.settings.mobilePad + 'px');
-      if (state.settings.density === 'compact'){
-        document.documentElement.style.setProperty('--btn-px','8px');
-        document.documentElement.style.setProperty('--btn-py','6px');
-      } else if (state.settings.density === 'comfortable'){
-        document.documentElement.style.setProperty('--btn-px','14px');
-        document.documentElement.style.setProperty('--btn-py','10px');
-      } else {
-        document.documentElement.style.setProperty('--btn-px','12px');
-        document.documentElement.style.setProperty('--btn-py','8px');
-      }
-      // apply uniformly to common buttons in toolbars
-      $$('.canvas-toolbar button, .canvas-fs-toolbar button, .top-actions > button, #fsToolbar button').forEach(b=>{
-        b.style.padding = `var(--btn-py) var(--btn-px)`;
-      });
-      try { window.ocFitDoc && window.ocFitDoc(); } catch {}
-    }
-    function loadSettings(){
-      const s = store.loadSettings();
-      if (typeof s.mobilePad === 'number') state.settings.mobilePad = clamp(s.mobilePad, 0, 48);
-      if (s.density) state.settings.density = s.density;
-      applySettingsToCSS();
-    }
-    function saveSettings(){ store.saveSettings(state.settings); }
-
-    function openSettings(){
-      const el = $('#settingsPanel'); if (!el) return;
-      $('#setMobilePad').value = String(state.settings.mobilePad);
-      $('#setMobilePadNum').value = String(state.settings.mobilePad);
-      el.style.display = 'block';
-    }
-    function closeSettings(){
-      const el = $('#settingsPanel'); if (!el) return;
-      el.style.display = 'none';
-    }
-
     /* =============== QUILL =============== */
     function renderQuillToolbar() {
       $('#quillToolbar').innerHTML = `
-        <div class="glass border rounded-2xl p-2 flex flex-wrap gap-2 items-center" style="border-color:var(--line)">
+        <div class="glass border rounded-2xl p-2 flex items-center gap-2 toolbar-scroll" style="border-color:var(--line)">
           <span class="ql-formats">
             <select class="ql-font">
               <option selected value="system" data-label="System">System</option>
@@ -740,22 +645,22 @@
       if (btnDocInvoice) btnDocInvoice.addEventListener('click', () => insertInvoiceDoc());
 
       function insertInvoiceDoc(){
-        const col = getComputedStyle(document.documentElement).getPropertyValue('--accent')?.trim() || '#3B82F6';
-        const border = hexToRGBA('#ffffff', 0.25);
-        const header = `<div style="text-align:center; font-weight:700; font-size:22px; margin-bottom:8px; color:${col}">INVOICE</div>`;
-        const parties = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; color:${col}"><div contenteditable="true">From:<br>Your Company<br>Address</div><div contenteditable="true">Bill To:<br>Client Name<br>Address</div></div>`;
-        const thCell = `class="doc-cell" style="font-weight:600; border:1px solid ${border}; color:${col}"`;
-        const tdCell = `class="doc-cell" style="border:1px solid ${border}; color:${col}" contenteditable="true"`;
-        const tableHead = `<div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr;"><div ${thCell}>Item</div><div ${thCell}>Qty</div><div ${thCell}>Price</div><div ${thCell}>Amount</div></div>`;
-        const rows = Array.from({length:4}).map(()=>`<div style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr;"><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div></div>`).join('');
-        const totals = `<div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px"><div class="doc-cell" style="border:1px solid ${border}; color:${col}" contenteditable="true">Notes</div><div style="text-align:right; font-weight:600; color:${col}">Total:</div><div class="doc-cell" style="border:1px solid ${border}; color:${col}" contenteditable="true">$0.00</div></div>`;
-        const body = `<div>${header}${parties}<div class="doc-grid">${tableHead}${rows}</div>${totals}</div>`;
-        const html = `<div class="doc-widget" style="border-color:${border}; color:${col}" contenteditable="false" draggable="true" data-type="invoice"><div class="drag-handle" title="Drag"></div><div class="resize-handle" title="Resize"></div>${body}</div>`;
+        const col = currentUIColor();
+        const border = hexToRGBA(col, 0.35);
+        const header = `<div style=\"text-align:center; font-weight:700; font-size:22px; margin-bottom:8px; color:${col}\">INVOICE</div>`;
+        const parties = `<div style=\"display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; color:${col}\"><div contenteditable=\"true\">From:<br>Your Company<br>Address</div><div contenteditable=\"true\">Bill To:<br>Client Name<br>Address</div></div>`;
+        const thCell = `class=\\"doc-cell\\" style=\\"font-weight:600; border:1px solid ${border}; color:${col}\\"`;
+        const tdCell = `class=\\"doc-cell\\" style=\\"border:1px solid ${border}; color:${col}\\" contenteditable=\\"true\\"`;
+        const tableHead = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr 1fr;\"><div ${thCell}>Item</div><div ${thCell}>Qty</div><div ${thCell}>Price</div><div ${thCell}>Amount</div></div>`;
+        const rows = Array.from({length:4}).map(()=>`<div style=\"display:grid; grid-template-columns:2fr 1fr 1fr 1fr;\"><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div></div>`).join('');
+        const totals = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px\"><div class=\"doc-cell\" style=\"border:1px solid ${border}; color:${col}\" contenteditable=\"true\">Notes</div><div style=\"text-align:right; font-weight:600; color:${col}\">Total:</div><div class=\"doc-cell\" style=\"border:1px solid ${border}; color:${col}\" contenteditable=\"true\">$0.00</div></div>`;
+        const body = `<div>${header}${parties}<div class=\"doc-grid\">${tableHead}${rows}</div>${totals}</div>`;
+        const html = `<div class=\"doc-widget\" style=\"border-color:${border}; color:${col}\" contenteditable=\"false\" draggable=\"true\" data-type=\"invoice\"><div class=\"drag-handle\" title=\"Drag\"></div><div class=\"resize-handle\" title=\"Resize\"></div>${body}</div>`;
         q.clipboard.dangerouslyPasteHTML(q.getSelection()?.index ?? q.getLength(), html);
         markDirty();
       }
 
-      // Draggable/resizable widgets
+      // Doc widget interactions: drag to reorder; resize
       (function wireDocWidgets(){
         const root = q.root;
         let dragEl = null;
@@ -797,6 +702,7 @@
         });
         root.addEventListener('pointerup', () => { if (rs.el) { rs.el=null; markDirty(); } });
         root.addEventListener('pointercancel', () => { rs.el=null; });
+
         root.addEventListener('input', (e) => { if (e.target.closest('.doc-widget')) markDirty(); });
       })();
     }
@@ -835,7 +741,9 @@
           await new Promise(res => canvas.loadFromJSON(snap.json, () => res()));
           if (snap.bg) canvas.setBackgroundColor(snap.bg, canvas.renderAll.bind(canvas));
           canvas.requestRenderAll();
-        } finally { state.suppressHistory = false; }
+        } finally {
+          state.suppressHistory = false;
+        }
       }
       async function undoCanvas(){ if (state.hist.idx > 0) { state.hist.idx--; await loadHistoryAt(state.hist.idx); } }
       async function redoCanvas(){ if (state.hist.idx < state.hist.stack.length - 1) { state.hist.idx++; await loadHistoryAt(state.hist.idx); } }
@@ -857,6 +765,7 @@
         visualViewport.addEventListener('scroll', debounce(resize, 60));
       }
 
+      // drawing defaults
       canvas.isDrawingMode = false;
       canvas.freeDrawingBrush.width = 3;
       canvas.freeDrawingBrush.color = '#ffffff';
@@ -870,38 +779,47 @@
             hoverCursor:'move', fill:null, strokeUniform:true, erasable:true
           });
           p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
-        } else { try { canvas.remove(p); } catch {} return; }
+        } else {
+          try { canvas.remove(p); } catch {}
+          return;
+        }
         markDirty(); pushHistoryDebounced();
       });
 
-      // Interactions by tool
       canvas.on('mouse:down', (opt) => {
         try { if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } catch {}
         const target = opt.target;
         const pt = canvas.getPointer(opt.e);
+
         if (state.isSpacePanning) {
-          canvas.isDragging = true; canvas.selection = false;
-          canvas.lastPosX = opt.e.clientX; canvas.lastPosY = opt.e.clientY; return;
+          canvas.isDragging = true;
+          canvas.selection = false;
+          canvas.lastPosX = opt.e.clientX;
+          canvas.lastPosY = opt.e.clientY;
+          return;
         }
-        // Touch quick edit
+
+        // Touch quick-edit
         if (state.currentTool === 'select' && target && (target.type === 'textbox' || target.type === 'i-text')) {
           const isTouch = !!(opt.e && (opt.e.touches || opt.e.pointerType === 'touch'));
-          if (isTouch) {
-            if (!target.isEditing) {
-              canvas.setActiveObject(target); target.enterEditing();
-              if (target.hiddenTextarea) { try { target.hiddenTextarea.focus(); } catch {} }
-              setTimeout(()=>{ try { target.hiddenTextarea && target.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
-              return;
-            }
+          if (isTouch && !target.isEditing) {
+            canvas.setActiveObject(target);
+            target.enterEditing();
+            if (target.hiddenTextarea) { try { target.hiddenTextarea.focus(); } catch {} }
+            setTimeout(()=>{ try { target.hiddenTextarea && target.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
+            return;
           }
         }
+
         if (state.currentTool === 'text') {
           if (target && target.type === 'textbox') {
             if (!target.isEditing) {
-              canvas.setActiveObject(target); target.enterEditing();
+              canvas.setActiveObject(target);
+              target.enterEditing();
               target.hiddenTextarea && target.hiddenTextarea.focus();
               const len = target.text?.length ?? 0;
-              target.setSelectionStart(len); target.setSelectionEnd(len);
+              target.setSelectionStart(len);
+              target.setSelectionEnd(len);
             }
             return;
           }
@@ -912,25 +830,36 @@
               backgroundColor: 'rgba(255,255,255,0.04)', padding: 8, cornerStyle:'circle',
               erasable: true
             });
-          canvas.add(tb); canvas.setActiveObject(tb); tb.enterEditing();
+          canvas.add(tb);
+          canvas.setActiveObject(tb);
+          tb.enterEditing();
           if (tb.hiddenTextarea) { try { tb.hiddenTextarea.focus(); } catch {} }
           setTimeout(()=>{ try { tb.hiddenTextarea && tb.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
-          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced(); return;
+          canvas.requestRenderAll();
+          markDirty(); pushHistoryDebounced();
+          return;
         }
+
         if (state.currentTool === 'sticky') {
           const sticky = new fabric.Textbox('',
             { left: pt.x, top: pt.y, width: 260, fontSize: 18, editable: true,
               fill:'#1f2937', backgroundColor: '#facc15', padding: 10, rx: 12, ry: 12, cornerStyle:'circle',
               erasable: true
             });
-          canvas.add(sticky); canvas.setActiveObject(sticky);
-          useTool('text'); sticky.enterEditing();
+          canvas.add(sticky);
+          canvas.setActiveObject(sticky);
+          useTool('text');
+          sticky.enterEditing();
           if (sticky.hiddenTextarea) { try { sticky.hiddenTextarea.focus(); } catch {} }
           setTimeout(()=>{ try { sticky.hiddenTextarea && sticky.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
-          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced(); return;
+          canvas.requestRenderAll();
+          markDirty(); pushHistoryDebounced();
+          return;
         }
       });
+
       canvas.on('text:changed', () => { markDirty(); pushHistoryDebounced(); });
+
       canvas.on('mouse:move', (opt) => {
         if (canvas.isDragging) {
           const v = canvas.viewportTransform;
@@ -940,12 +869,18 @@
           canvas.lastPosX = opt.e.clientX; canvas.lastPosY = opt.e.clientY;
         }
       });
-      canvas.on('mouse:up', () => { canvas.isDragging = false; canvas.selection = (state.currentTool === 'select'); });
+      canvas.on('mouse:up', () => {
+        canvas.isDragging = false;
+        canvas.selection = (state.currentTool === 'select');
+      });
 
       function maybeSnap(target) {
         if (!state.grid.snap) return;
         const gs = state.grid.size;
-        target.set({ left: Math.round(target.left / gs) * gs, top:  Math.round(target.top  / gs) * gs });
+        target.set({
+          left: Math.round(target.left / gs) * gs,
+          top:  Math.round(target.top  / gs) * gs
+        });
       }
       canvas.on('object:moving', (e) => { maybeSnap(e.target); });
       canvas.on('object:scaling', (e) => { maybeSnap(e.target); });
@@ -962,9 +897,10 @@
         ctx.strokeStyle = 'rgba(255,255,255,0.08)';
         ctx.lineWidth = 1;
         for (let x = xStart; x < canvas.getWidth(); x += gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.getHeight()); ctx.stroke(); }
-        for (let y = yStart; y < canvas.getHeight(); y += gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.getWidth(),y); ctx.stroke(); }
+        for (let y = yStart; y < canvas.getHeight(); y += gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(0,y); ctx.moveTo(0,y); ctx.lineTo(canvas.getWidth(),y); ctx.stroke(); }
         ctx.restore();
       });
+
       try { canvas.on('erasing:end', () => { markDirty(); pushHistoryDebounced(); }); } catch {}
 
       canvas.on('mouse:wheel', (opt) => {
@@ -1002,7 +938,9 @@
         if (k === 'p') useTool('draw');
         if (k === 't') useTool('text');
         if (k === 'n') useTool('sticky');
-        if (e.code === 'Space' && !state.isSpacePanning) { state.isSpacePanning = true; canvas.defaultCursor = 'grab'; canvas.selection = false; }
+        if (e.code === 'Space' && !state.isSpacePanning) {
+          state.isSpacePanning = true; canvas.defaultCursor = 'grab'; canvas.selection = false;
+        }
         if ((e.key === 'Delete' || e.key === 'Backspace')) {
           const active = canvas.getActiveObjects();
           if (active.length) {
@@ -1021,19 +959,65 @@
         }
       });
 
-      function applyColor(obj, col){
-        if (obj.type === 'path') obj.set({ stroke: col });
-        else if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') obj.set({ fill: col });
-        else if (obj.type === 'group' && obj._objects) obj._objects.forEach(ch => applyColor(ch, col));
-        else obj.set({ fill: col });
+      const toolBtns = $$('#canvasPanel .tool');
+      const fsToolBtns = $$('#fsToolbar [data-tool]');
+      toolBtns.forEach(btn => {
+        btn.classList.add('px-3','py-1.5','glass-2','hover:bg-white/20','rounded-lg','border','text-sm');
+        btn.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
+        btn.addEventListener('click', () => useTool(btn.dataset.tool));
+      });
+      const setToolActive = (tool) => {
+        toolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === tool));
+        fsToolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === tool));
+      };
+      fsToolBtns.forEach(btn => btn.addEventListener('click', () => useTool(btn.dataset.tool)));
+      const fsUndo = document.getElementById('fsUndo');
+      if (fsUndo) fsUndo.addEventListener('click', undoCanvas);
+      const fsRedo = document.getElementById('fsRedo');
+      if (fsRedo) fsRedo.addEventListener('click', redoCanvas);
+      const fsInsertInvoice = document.getElementById('fsInsertInvoice');
+      if (fsInsertInvoice) fsInsertInvoice.addEventListener('click', () => insertInvoice());
+
+      function insertInvoice(){
+        const items = [];
+        const cx = canvas.getWidth()/2; let y = Math.max(40, canvas.getHeight()*0.1);
+        const mkText = (txt, opts={}) => new fabric.Textbox(txt, Object.assign({ left: cx-200, top: y, width: 400, fontSize: 20, fill: '#ffffff', textAlign:'center', erasable:true }, opts));
+        const title = mkText('INVOICE', { fontSize: 28, fontWeight: '700' }); y += 40;
+        const from = new fabric.Textbox('From:\\nYour Company\\nAddress', { left: cx-360, top: y, width: 240, fontSize: 14, fill:'#ffffff', erasable:true });
+        const to   = new fabric.Textbox('Bill To:\\nClient Name\\nAddress', { left: cx+120, top: y, width: 240, fontSize: 14, fill:'#ffffff', erasable:true }); y += 90;
+        items.push(title, from, to);
+        const headers = ['Item','Qty','Price','Amount'];
+        const cols = headers.length; const rows = 5; const cellW = 140; const cellH = 34; const startX = cx - (cols*cellW)/2; const startY = y;
+        for (let i=0;i<=rows;i++){
+          const ly = startY + i*cellH; items.push(new fabric.Line([startX, ly, startX + cols*cellW, ly], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+        }
+        for (let c=0;c<=cols;c++){
+          const lx = startX + c*cellW; items.push(new fabric.Line([lx, startY, lx, startY + rows*cellH], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+        }
+        headers.forEach((h,i)=>{ items.push(new fabric.Textbox(h, { left: startX + i*cellW + 6, top: startY + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', fontWeight:'600', erasable:true })); });
+        for (let r=1; r<rows; r++){
+          for (let c=0; c<cols; c++){
+            items.push(new fabric.Textbox('', { left: startX + c*cellW + 6, top: startY + r*cellH + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', erasable:true }));
+          }
+        }
+        y = startY + rows*cellH + 20;
+        const notes = new fabric.Textbox('Notes', { left: startX, top: y, width: cellW*2, fontSize: 14, fill:'#ffffff', erasable:true });
+        const totalLbl = new fabric.Textbox('Total:', { left: startX + cellW*2 + 20, top: y, width: cellW-20, fontSize: 16, fill:'#ffffff', textAlign:'right', erasable:true });
+        const totalVal = new fabric.Textbox('$0.00', { left: startX + cellW*3 + 6, top: y, width: cellW-12, fontSize: 16, fill:'#ffffff', erasable:true });
+        items.push(notes, totalLbl, totalVal);
+        const grp = new fabric.Group(items, { left: 0, top: 0, subTargetCheck: true, objectCaching: false, erasable:true });
+        canvas.add(grp);
+        canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
       }
 
-      // Controls
       $('#brushSize').addEventListener('input', (e) => {
         const sz = Number(e.target.value || 3);
         if (canvas.isDrawingMode) canvas.freeDrawingBrush.width = sz;
         const active = canvas.getActiveObjects();
-        if (active.length) { active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); }); canvas.requestRenderAll(); markDirty(); pushHistoryDebounced(); }
+        if (active.length) {
+          active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); });
+          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
+        }
         const fsBrush = document.getElementById('fsBrush'); if (fsBrush) fsBrush.value = String(sz);
       });
       function applyBrushColor(col){
@@ -1046,7 +1030,10 @@
         const col = e.target.value || '#ffffff';
         applyBrushColor(col);
         const active = canvas.getActiveObjects();
-        if (active.length) { active.forEach(o => applyColor(o, col)); canvas.requestRenderAll(); markDirty(); pushHistoryDebounced(); }
+        if (active.length) {
+          active.forEach(o => applyColor(o, col));
+          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
+        }
         const fsColor = document.getElementById('fsColor'); if (fsColor) fsColor.value = col;
       });
       const fsColor = document.getElementById('fsColor');
@@ -1057,7 +1044,10 @@
           const bc = document.getElementById('brushColor'); if (bc) bc.value = col;
           applyBrushColor(col);
           const active = canvas.getActiveObjects();
-          if (active.length) { active.forEach(o => applyColor(o, col)); canvas.requestRenderAll(); markDirty(); }
+          if (active.length) {
+            active.forEach(o => applyColor(o, col));
+            canvas.requestRenderAll(); markDirty();
+          }
         };
         fsColor.addEventListener('input', onFsColor);
         fsColor.addEventListener('change', onFsColor);
@@ -1070,8 +1060,17 @@
           const main = document.getElementById('brushSize'); if (main) main.value = String(sz);
           if (canvas.isDrawingMode) canvas.freeDrawingBrush.width = sz;
           const active = canvas.getActiveObjects();
-          if (active.length) { active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); }); canvas.requestRenderAll(); markDirty(); }
+          if (active.length) {
+            active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); });
+            canvas.requestRenderAll(); markDirty();
+          }
         });
+      }
+      function applyColor(obj, col){
+        if (obj.type === 'path') obj.set({ stroke: col });
+        else if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') obj.set({ fill: col });
+        else if (obj.type === 'group' && obj._objects) obj._objects.forEach(ch => applyColor(ch, col));
+        else obj.set({ fill: col });
       }
       $('#clearCanvas').addEventListener('click', () => {
         if (confirm('Clear the canvas?')) {
@@ -1086,8 +1085,15 @@
       $('#zoomLevel').addEventListener('change', (e) => setZoom(clamp((Number(e.target.value)||100)/100, 0.1, 5)));
 
       function isFullscreen(){ return document.body.classList.contains('fs-canvas-on'); }
-      function enterFS(){ try { setMode && setMode('canvas'); } catch {} document.body.classList.add('fs-canvas-on','fs-active'); const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Exit'; resize(); }
-      function exitFS(){ document.body.classList.remove('fs-canvas-on','fs-active'); const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Full'; resize(); }
+      function enterFS(){
+        try { setMode && setMode('canvas'); } catch {}
+        document.body.classList.add('fs-canvas-on','fs-active');
+        const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Exit';
+      }
+      function exitFS(){
+        document.body.classList.remove('fs-canvas-on','fs-active');
+        const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Full';
+      }
       function toggleFS(){ isFullscreen() ? exitFS() : enterFS(); }
       const fsToolbarExit = document.getElementById('fsToolbarExit');
       if (fsToolbarExit) fsToolbarExit.addEventListener('click', toggleFS);
@@ -1095,7 +1101,7 @@
       function setZoom(z){ state.zoom = clamp(z, 0.1, 5); const c = new fabric.Point(canvas.getWidth()/2, canvas.getHeight()/2); canvas.zoomToPoint(c, state.zoom); $('#zoomLevel').value = Math.round(state.zoom*100); }
       function resetViewport(){ state.zoom = 1; canvas.setViewportTransform([1,0,0,1,0,0]); $('#zoomLevel').value = 100; canvas.requestRenderAll(); }
 
-      // pinch-zoom / two-finger pan
+      // Touch: pinch-zoom + two-finger pan
       (function enablePinchZoom(){
         const target = canvas.upperCanvasEl;
         let t1=null, t2=null, lastDist=0, lastCenter=null;
@@ -1135,77 +1141,38 @@
 
       function useTool(kind){
         state.currentTool = kind;
+        state.awaitingPlacement = null;
         canvas.isDrawingMode = false;
         canvas.defaultCursor = 'default';
         canvas.selection = (kind === 'select');
 
-        // apply active classes
-        const toolBtns = $$('#canvasPanel .tool');
-        const fsToolBtns = $$('#fsToolbar [data-tool]');
         toolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === kind));
         fsToolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === kind));
 
         if (kind === 'draw') {
-          canvas.isDrawingMode = true;
           if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) {
             canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
           }
+          canvas.isDrawingMode = true;
           canvas.freeDrawingBrush.color = $('#brushColor').value || '#ffffff';
           canvas.freeDrawingBrush.width = Number($('#brushSize').value || 3);
           canvas.defaultCursor = 'crosshair';
           return;
         }
-        if (kind === 'text' || kind === 'sticky' || kind === 'erase') {
+        if (kind === 'text' || kind === 'sticky') {
           canvas.defaultCursor = 'crosshair';
-          if (kind === 'erase') {
-            canvas.isDrawingMode = true;
-            try { canvas.freeDrawingBrush = new fabric.EraserBrush(canvas); } catch { canvas.freeDrawingBrush = new fabric.PencilBrush(canvas); }
-            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
-          }
+          return;
+        }
+        if (kind === 'erase') {
+          canvas.isDrawingMode = true;
+          try { canvas.freeDrawingBrush = new fabric.EraserBrush(canvas); } catch { canvas.freeDrawingBrush = new fabric.PencilBrush(canvas); }
+          canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
+          canvas.defaultCursor = 'crosshair';
           return;
         }
       }
-
-      // Tool buttons set up (padding from settings)
-      const toolBtns = $$('#canvasPanel .tool');
-      const fsToolBtns = $$('#fsToolbar [data-tool]');
-      [...toolBtns, ...fsToolBtns].forEach(btn => {
-        btn.classList.add('px-3','py-1.5','glass-2','hover:bg-white/20','rounded-lg','border','text-sm');
-        btn.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
-        btn.addEventListener('click', () => useTool(btn.dataset.tool));
-      });
-
-      const fsUndo = document.getElementById('fsUndo'); if (fsUndo) fsUndo.addEventListener('click', undoCanvas);
-      const fsRedo = document.getElementById('fsRedo'); if (fsRedo) fsRedo.addEventListener('click', redoCanvas);
-      const fsInsertInvoice = document.getElementById('fsInsertInvoice'); if (fsInsertInvoice) fsInsertInvoice.addEventListener('click', () => insertInvoice());
-
-      function insertInvoice(){
-        const items = [];
-        const cx = canvas.getWidth()/2; let y = Math.max(40, canvas.getHeight()*0.1);
-        const mkText = (txt, opts={}) => new fabric.Textbox(txt, Object.assign({ left: cx-200, top: y, width: 400, fontSize: 20, fill: '#ffffff', textAlign:'center', erasable:true }, opts));
-        const title = mkText('INVOICE', { fontSize: 28, fontWeight: '700' }); y += 40;
-        const from = new fabric.Textbox('From:\nYour Company\nAddress', { left: cx-360, top: y, width: 240, fontSize: 14, fill:'#ffffff', erasable:true });
-        const to   = new fabric.Textbox('Bill To:\nClient Name\nAddress', { left: cx+120, top: y, width: 240, fontSize: 14, fill:'#ffffff', erasable:true }); y += 90;
-        items.push(title, from, to);
-        const headers = ['Item','Qty','Price','Amount'];
-        const cols = headers.length; const rows = 5; const cellW = 140; const cellH = 34; const startX = cx - (cols*cellW)/2; const startY = y;
-        for (let i=0;i<=rows;i++){ const ly = startY + i*cellH; items.push(new fabric.Line([startX, ly, startX + cols*cellW, ly], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true })); }
-        for (let c=0;c<=cols;c++){ const lx = startX + c*cellW; items.push(new fabric.Line([lx, startY, lx, startY + rows*cellH], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true })); }
-        headers.forEach((h,i)=>{ items.push(new fabric.Textbox(h, { left: startX + i*cellW + 6, top: startY + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', fontWeight:'600', erasable:true })); });
-        for (let r=1; r<rows; r++){ for (let c=0; c<cols; c++){ items.push(new fabric.Textbox('', { left: startX + c*cellW + 6, top: startY + r*cellH + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', erasable:true })); } }
-        y = startY + rows*cellH + 20;
-        const notes = new fabric.Textbox('Notes', { left: startX, top: y, width: cellW*2, fontSize: 14, fill:'#ffffff', erasable:true });
-        const totalLbl = new fabric.Textbox('Total:', { left: startX + cellW*2 + 20, top: y, width: cellW-20, fontSize: 16, fill:'#ffffff', textAlign:'right', erasable:true });
-        const totalVal = new fabric.Textbox('$0.00', { left: startX + cellW*3 + 6, top: y, width: cellW-12, fontSize: 16, fill:'#ffffff', erasable:true });
-        items.push(notes, totalLbl, totalVal);
-        const grp = new fabric.Group(items, { left: 0, top: 0, subTargetCheck: true, objectCaching: false, erasable:true });
-        canvas.add(grp);
-        canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
-      }
-
-      // start in Move mode
       useTool('select');
-      pushHistoryDebounced();
+      pushHistory();
     }
 
     /* =============== MODE TOGGLE =============== */
@@ -1325,7 +1292,7 @@
     /* =============== EXPORT ACTIONS =============== */
     async function exportDocx() {
       try {
-        if (!(await ensureHtmlDocx())) throw new Error('html-docx library not available');
+        if (!window.htmlDocx || !window.htmlDocx.asBlob) throw new Error('html-docx library not available');
         const snap = getSnapshot();
         const html = buildStandaloneHTML(snap);
         let blob = window.htmlDocx.asBlob(html, {
@@ -1342,6 +1309,7 @@
         alert('DOCX export failed. Try disabling content blockers or using a modern browser. Error: ' + (err?.message || err));
       }
     }
+
     async function exportPDF() {
       const snap = getSnapshot();
       const html = buildStandaloneHTML(snap);
@@ -1354,6 +1322,7 @@
       }).from(html).save();
       flash('Exported .pdf');
     }
+
     function exportHTML() {
       const snap = getSnapshot();
       const html = buildStandaloneHTML(snap);
@@ -1361,6 +1330,7 @@
       downloadBlob(blob, safeFileName(snap.title)+'.html');
       flash('Exported .html');
     }
+
     function exportJSON() {
       const snap = getSnapshot();
       const blob = new Blob([JSON.stringify(snap,null,2)], {type:'application/json'});
@@ -1382,11 +1352,11 @@
             row.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
             row.innerHTML = `
               <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="font-medium truncate" style="color:var(--text)">${escapeHtml(item.title||'Untitled')}</div>
+                <div>
+                  <div class="font-medium" style="color:var(--text)">${escapeHtml(item.title||'Untitled')}</div>
                   <div class="text-xs" style="color:var(--muted)">${niceDate(item.updatedAt)}</div>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center gap-2">
                   <button class="px-2 py-1 glass-2 hover:bg-white/20 rounded-lg text-xs border" data-open-id="${item.id}" style="border-color:var(--line)">Open</button>
                   <button class="px-2 py-1 glass-2 hover:bg-white/20 rounded-lg text-xs border" data-download-id="${item.id}" style="border-color:var(--line)">Export .ocnote</button>
                 </div>
@@ -1429,7 +1399,34 @@
           });
     }
 
-    /* =============== MENUS / SHORTCUTS / SETTINGS WIRING =============== */
+    /* =============== SETTINGS =============== */
+    function applySettingsToDOM(){
+      const pad = clamp(Number(state.settings.mobileDocPadPx)||12, 0, 40);
+      document.documentElement.style.setProperty('--mobile-doc-pad', pad + 'px');
+      const sNum = $('#padNumber'), sSlide = $('#padSlider');
+      if (sNum) sNum.value = String(pad);
+      if (sSlide) sSlide.value = String(pad);
+      try { window.ocFitDoc && window.ocFitDoc(); } catch {}
+    }
+    function openSettings(){ $('#settingsPage').classList.remove('hidden'); document.body.style.overflow='hidden'; applySettingsToDOM(); }
+    function closeSettings(){ $('#settingsPage').classList.add('hidden'); document.body.style.overflow=''; }
+    function wireSettings(){
+      $('#settingsBtn')?.addEventListener('click', openSettings);
+      $('#settingsClose')?.addEventListener('click', closeSettings);
+      $$('[data-close-settings]').forEach(el => el.addEventListener('click', closeSettings));
+
+      const sNum = $('#padNumber'), sSlide = $('#padSlider'), sReset = $('#padReset');
+      const onChange = (val) => {
+        state.settings.mobileDocPadPx = clamp(Number(val)||12, 0, 40);
+        store.saveSettings(state.settings);
+        applySettingsToDOM();
+      };
+      sNum?.addEventListener('input', (e)=> onChange(e.target.value));
+      sSlide?.addEventListener('input', (e)=> onChange(e.target.value));
+      sReset?.addEventListener('click', ()=> onChange(12));
+    }
+
+    /* =============== MENUS / SHORTCUTS =============== */
     function wireMenus() {
       const expBtn = $('#exportBtn'), expMenu = $('#exportMenu');
       const closeMenus = () => { expMenu.classList.add('hidden'); expBtn.setAttribute('aria-expanded','false'); };
@@ -1459,28 +1456,6 @@
         if (k==='html') exportHTML();
         if (k==='json') exportJSON();
       }));
-
-      // Settings wiring
-      $('#settingsBtn')?.addEventListener('click', openSettings);
-      $('#settingsClose')?.addEventListener('click', closeSettings);
-      $('#settingsPanel')?.addEventListener('click', (e)=>{ if (e.target.id === 'settingsPanel') closeSettings(); });
-
-      const r = $('#setMobilePad'); const n = $('#setMobilePadNum');
-      const syncVal = (val) => {
-        val = clamp(Number(val)||0, 0, 48);
-        state.settings.mobilePad = val; r.value = String(val); n.value = String(val);
-        applySettingsToCSS(); saveSettings();
-      };
-      r?.addEventListener('input', (e)=> syncVal(e.target.value));
-      n?.addEventListener('input', (e)=> syncVal(e.target.value));
-      $('#setMobilePadReset')?.addEventListener('click', ()=> syncVal(12));
-
-      $$('#settingsCard [data-density]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          state.settings.density = btn.getAttribute('data-density');
-          applySettingsToCSS(); saveSettings(); flash('Toolbar density updated');
-        });
-      });
     }
     function wireShortcuts() {
       window.addEventListener('keydown', (e) => {
@@ -1490,7 +1465,7 @@
       });
     }
 
-    /* =============== FIT DOC TO VIEWPORT =============== */
+    /* =============== LAYOUT FIT (Word-like) =============== */
     function fitDoc(){
       const wrap = document.getElementById('pageWrap'); if (!wrap) return;
       const page = document.getElementById('page'); if (!page) return;
@@ -1512,7 +1487,6 @@
     /* =============== BOOT =============== */
     function boot() {
       applyTheme(store.loadTheme() || 'dark');
-      loadSettings();
       initQuill();
       initCanvas();
 
@@ -1521,40 +1495,35 @@
       $('#modeCanvas').addEventListener('click', () => setMode('canvas'));
       $('#newBtn').addEventListener('click', newDocument);
       $('#saveBtn').addEventListener('click', saveDocument);
-
       $('#openBtn').addEventListener('click', openFromChooser);
       $('#openFile').addEventListener('change', (e) => { const f = e.target.files?.[0]; if (f) importProject(f); e.target.value=''; });
 
-      // history
       const menuBtn = document.getElementById('menuBtn');
       if (menuBtn) menuBtn.addEventListener('click', openHistory);
       $('#searchHistory').addEventListener('input', debounce(refreshHistoryUI, 120));
       const sbs = document.getElementById('sidebarSearch');
       if (sbs) sbs.addEventListener('input', debounce(refreshSidebarUI, 120));
 
-      // title dirty tracking
       const titleEl = $('#docTitle');
       titleEl.addEventListener('input', markDirty);
       titleEl.addEventListener('focus', () => { if (titleEl.value.trim() === 'Untitled note') { titleEl.value = ''; } });
 
-      // theme
       $('#themeBtn').addEventListener('click', toggleTheme);
 
-      // Mobile bar wiring
+      // Settings wiring + initial apply
+      wireSettings();
+      applySettingsToDOM();
+
+      // Mobile bar wiring (kept minimal)
       const mbNew = document.getElementById('mbNew');
-      const mbSave = document.getElementById('mbSave');
-      const mbExport = document.getElementById('mbExport');
       const mbMode = document.getElementById('mbMode');
       const mbTheme = document.getElementById('mbTheme');
       if (mbNew) mbNew.addEventListener('click', newDocument);
-      if (mbSave) mbSave.addEventListener('click', saveDocument);
-      if (mbExport) mbExport.addEventListener('click', (e)=>{ e.stopPropagation(); const b=document.getElementById('exportBtn'); b && b.click(); });
       if (mbMode) mbMode.addEventListener('click', ()=> setMode(state.mode==='doc' ? 'canvas':'doc'));
       if (mbTheme) mbTheme.addEventListener('click', toggleTheme);
 
       wireMenus(); wireShortcuts();
 
-      // autosave
       setInterval(()=>{ if (state.dirty) saveDocument(); }, 30000);
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && state.dirty) { try { const snap = getSnapshot(); store.upsert(snap); clearDirty(); } catch {} } });
       window.addEventListener('beforeunload', () => { if (state.dirty) { try { const snap = getSnapshot(); store.upsert(snap); } catch {} } });
@@ -1563,11 +1532,9 @@
       refreshHistoryUI();
       refreshSidebarUI();
 
-      // measure header height to position sidebar
       const header = document.querySelector('header');
       if (header) document.documentElement.style.setProperty('--topbar-h', header.offsetHeight + 'px');
 
-      // sidebar open/close state
       state.sidebarOpen = store.loadSidebarOpen();
       const applySidebarPadding = () => {
         const wide = window.innerWidth >= 1024;
@@ -1585,11 +1552,10 @@
       const sbToggle = document.getElementById('toggleSidebar');
       if (sbToggle) sbToggle.addEventListener('click', () => { state.sidebarOpen = !state.sidebarOpen; store.saveSidebarOpen(state.sidebarOpen); applySidebarPadding(); fitDoc(); });
 
-      // Ensure page fits viewport like Word (always one 8.5x11 on screen)
       fitDoc();
       window.addEventListener('resize', debounce(fitDoc, 150));
 
-      // Register service worker (PWA)
+      // Service worker (optional)
       if ('serviceWorker' in navigator) {
         try { navigator.serviceWorker.register('./sw.js'); } catch(e) { console.warn('SW registration failed', e); }
       }
@@ -1598,8 +1564,8 @@
     document.addEventListener('DOMContentLoaded', boot);
   </script>
 
-  <!-- Mobile bottom bar (minimal) -->
-  <nav class="mobile-bar fixed left-1/2 -translate-x-1/2 bottom-3 safe-pad-bottom px-2 py-1.5 glass border rounded-2xl shadow-lg items-center gap-1 z-[70]" style="border-color:var(--line); display:none">
+  <!-- Mobile bottom bar -->
+  <nav class="mobile-bar fixed left-1/2 -translate-x-1/2 bottom-3 px-2 py-1.5 glass border rounded-2xl shadow-lg flex items-center gap-1 z-[70]" style="border-color:var(--line); display:none">
     <button id="mbNew" class="px-2 py-1.5 text-sm rounded-xl hover:bg-white/10 flex items-center" aria-label="New">
       <span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
     </button>
