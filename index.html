@@ -92,7 +92,7 @@
     html[data-theme="dark"] .ql-editor ::selection{ background: rgba(59,130,246,0.35) }
     html[data-theme="light"] .ql-editor ::selection{ background: rgba(10,132,255,0.28) }
     #pageWrap{
-      display:grid; place-items:center; padding:16px; overflow-x:hidden; width:100%;
+      display:flex; justify-content:center; align-items:flex-start; padding:16px; overflow-x:hidden; width:100%;
       background:linear-gradient(var(--bg),var(--bg)) padding-box,
                  radial-gradient(600px 200px at 50% -50px, rgba(255,255,255,0.08), transparent) border-box;
     }
@@ -1624,7 +1624,7 @@
         const tH = tb?.offsetHeight || 0;
         const titleH = titleSec?.offsetHeight || 0;
         const availH = Math.max(400, window.innerHeight - hH - tH - titleH - 48);
-        const availW = Math.max(320, wrap.clientWidth - 24);
+        const availW = Math.max(320, wrap.clientWidth);
         const scale = Math.min(availW / 816, availH / 1056, 1);
         state.docScale = scale;
         page.style.left = '';
