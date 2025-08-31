@@ -149,6 +149,9 @@
     .canvas-fs-toolbar{ position:absolute; top:calc(env(safe-area-inset-top, 0px) + 12px); left:50%; transform: translateX(-50%); display:flex; z-index:1002 }
     /* Hide big toolbar in immersive fullscreen */
     body.fs-canvas-on .canvas-toolbar, body.fs-active .canvas-toolbar{ display:none !important }
+    /* Improve mobile interactions */
+    #canvasHost canvas{ touch-action: none }
+    .canvas-fs-toolbar button, .canvas-fs-toolbar input{ touch-action: manipulation }
 
     /* Print styles to render the document cleanly */
     @media print{
@@ -709,6 +712,10 @@
       };
       resize();
       window.addEventListener('resize', debounce(resize, 120));
+      if (window.visualViewport){
+        visualViewport.addEventListener('resize', debounce(resize, 60));
+        visualViewport.addEventListener('scroll', debounce(resize, 60));
+      }
 
       // drawing defaults
       canvas.isDrawingMode = false;
@@ -976,7 +983,10 @@
         const fsBrush = document.getElementById('fsBrush'); if (fsBrush) fsBrush.value = String(sz);
       });
       function applyBrushColor(col){
-        try { if (canvas.freeDrawingBrush && canvas.freeDrawingBrush.color !== undefined) canvas.freeDrawingBrush.color = col; } catch {}
+        try {
+          if (state.currentTool === 'erase') return; // don't ink the eraser
+          if (canvas.freeDrawingBrush && canvas.freeDrawingBrush.color !== undefined) canvas.freeDrawingBrush.color = col;
+        } catch {}
       }
       $('#brushColor').addEventListener('input', (e) => {
         const col = e.target.value || '#ffffff';
