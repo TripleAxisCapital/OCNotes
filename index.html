@@ -91,7 +91,7 @@
     html[data-theme="dark"] .ql-editor ::selection{ background: rgba(59,130,246,0.35) }
     html[data-theme="light"] .ql-editor ::selection{ background: rgba(10,132,255,0.28) }
     #pageWrap{
-      display:grid; place-items:center; padding:24px;
+      display:grid; place-items:center; padding:16px;
       background:linear-gradient(var(--bg),var(--bg)) padding-box,
                  radial-gradient(600px 200px at 50% -50px, rgba(255,255,255,0.08), transparent) border-box;
     }
@@ -101,6 +101,9 @@
       overflow:visible; position:relative; transform-origin: top center;
     }
     #page .ql-editor{min-height:calc(1056px - 2in); padding:1in; font-size:16px; line-height:1.6}
+    /* Title pill */
+    .title-pill{ display:inline-flex; align-items:center; border-radius:9999px }
+    #docTitle{ width:auto; max-width:60ch }
     #canvasHost{min-height:calc(100vh - 260px)}
     input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0}
     input[type=number]{-moz-appearance:textfield; appearance:textfield}
@@ -257,7 +260,7 @@
   <header class="sticky top-0 z-topbar">
     <div class="grad-bg">
       <div class="glass border-b" style="border-color: var(--line)">
-        <div class="w-full flex items-center justify-between gap-3 px-4 py-3">
+        <div class="w-full flex items-center justify-between gap-3 px-4 py-2">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-xl bg-white/90 text-black grid place-content-center font-bold">OC</div>
             <div class="leading-tight">
@@ -315,15 +318,17 @@
   </aside>
 
   <!-- ======= TITLE ROW ======= -->
-  <section class="max-w-[1200px] mx-auto px-4 mt-6">
-    <div class="glass rounded-2.5xl border p-3 flex items-center gap-3" style="border-color:var(--line)">
-      <input id="docTitle" class="flex-1 bg-transparent outline-none text-xl md:text-2xl font-semibold" style="color:var(--text)" placeholder="Untitled note" />
+  <section class="max-w-[1200px] mx-auto px-4 mt-3">
+    <div class="flex items-center gap-2">
+      <div class="title-pill glass-2 border px-3 py-1.5" style="border-color:var(--line)">
+        <input id="docTitle" class="bg-transparent outline-none text-lg md:text-xl font-semibold" style="color:var(--text)" placeholder="Untitled note" />
+      </div>
       <span id="dirtyDot" class="w-2.5 h-2.5 rounded-full bg-rose-400/80 hidden" title="Unsaved changes"></span>
     </div>
   </section>
 
   <!-- ======= MAIN PANELS ======= -->
-  <main class="max-w-[1200px] mx-auto px-4 mt-4">
+  <main class="max-w-[1200px] mx-auto px-4 mt-2">
     <!-- Document Mode -->
     <div id="docPanel" class="space-y-3">
       <div id="quillToolbar" class="rounded-2xl toolbar-scroll"></div>
@@ -333,9 +338,9 @@
     </div>
 
     <!-- Canvas Mode -->
-    <div id="canvasPanel" class="hidden">
+      <div id="canvasPanel" class="hidden">
       <!-- Canvas Toolbar -->
-      <div id="canvasToolDock" class="canvas-toolbar glass rounded-2xl border p-3 flex flex-wrap items-center gap-2" style="border-color:var(--line)">
+      <div id="canvasToolDock" class="canvas-toolbar glass rounded-2xl border p-2 flex flex-wrap items-center gap-2" style="border-color:var(--line)">
         <button class="tool" data-tool="select" title="V">Move</button>
         <button class="tool" data-tool="text"   title="T">Text</button>
         <button class="tool" data-tool="sticky" title="N">Sticky</button>
