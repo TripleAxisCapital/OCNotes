@@ -386,8 +386,13 @@
           <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="sticky">Sticky</button>
           <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="text">Text</button>
           <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="draw">Pen</button>
-          <input id="fsColor" type="color" class="w-7 h-7 p-0 bg-transparent border rounded-lg ml-1" style="border-color:var(--line)" title="Text/Brush Color" />
-          <input id="fsBrush" type="range" min="1" max="24" value="3" class="ml-1 align-middle" title="Pen Thickness" style="width:90px" />
+          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="erase">Erase</button>
+          <div class="h-5 w-px bg-white/10 mx-1"></div>
+          <input id="fsColor" type="color" class="w-7 h-7 p-0 bg-transparent border rounded-lg" style="border-color:var(--line)" title="Text/Brush Color" />
+          <input id="fsBrush" type="range" min="1" max="24" value="3" class="align-middle" title="Pen Thickness" style="width:90px" />
+          <div class="h-5 w-px bg-white/10 mx-1"></div>
+          <button id="fsUndo" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Undo</button>
+          <button id="fsRedo" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Redo</button>
         </div>
         <canvas id="ocCanvas"></canvas>
       </div>
@@ -506,6 +511,8 @@
       dirty: false,
       quill: null,
       canvas: null,
+      hist: { stack: [], idx: -1 },
+      suppressHistory: false,
       currentTool: 'select',     // 'select'|'text'|'sticky'|'draw'|'erase'
       awaitingPlacement: null,   // for click-to-place when 'text' or 'sticky'
       zoom: 1,
@@ -600,6 +607,31 @@
         targetFindTolerance: state.grid.targetTol
       });
       state.canvas = canvas;
+      const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform'];
+      function pushHistory(){
+        if (!canvas || state.suppressHistory) return;
+        try {
+          const snap = { json: canvas.toJSON(SAVE_PROPS), bg: canvas.backgroundColor || '#0f0f11' };
+          state.hist.stack = state.hist.stack.slice(0, state.hist.idx + 1);
+          state.hist.stack.push(snap);
+          state.hist.idx = state.hist.stack.length - 1;
+        } catch {}
+      }
+      const pushHistoryDebounced = debounce(pushHistory, 250);
+      async function loadHistoryAt(idx){
+        if (idx < 0 || idx >= state.hist.stack.length) return;
+        const snap = state.hist.stack[idx];
+        state.suppressHistory = true;
+        try {
+          await new Promise(res => canvas.loadFromJSON(snap.json, () => res()));
+          if (snap.bg) canvas.setBackgroundColor(snap.bg, canvas.renderAll.bind(canvas));
+          canvas.requestRenderAll();
+        } finally {
+          state.suppressHistory = false;
+        }
+      }
+      async function undoCanvas(){ if (state.hist.idx > 0) { state.hist.idx--; await loadHistoryAt(state.hist.idx); } }
+      async function redoCanvas(){ if (state.hist.idx < state.hist.stack.length - 1) { state.hist.idx++; await loadHistoryAt(state.hist.idx); } }
 
       const resize = () => {
         const vv = window.visualViewport;
@@ -627,7 +659,7 @@
           hoverCursor:'move', fill:null, strokeUniform:true
         });
         p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
-        markDirty();
+        markDirty(); pushHistoryDebounced();
       });
 
       // ===== Interaction rules by tool =====
@@ -678,7 +710,7 @@
           tb.enterEditing();
           tb.hiddenTextarea && tb.hiddenTextarea.focus();
           canvas.requestRenderAll();
-          markDirty();
+          markDirty(); pushHistoryDebounced();
           return;
         }
 
@@ -695,7 +727,7 @@
           sticky.enterEditing();
           sticky.hiddenTextarea && sticky.hiddenTextarea.focus();
           canvas.requestRenderAll();
-          markDirty();
+          markDirty(); pushHistoryDebounced();
           return;
         }
 
@@ -704,7 +736,7 @@
       });
 
       // prevent entering edit while in Move tool (single-click)
-      canvas.on('text:changed', markDirty);
+      canvas.on('text:changed', () => { markDirty(); pushHistoryDebounced(); });
 
       // Space-pan move/end
       canvas.on('mouse:move', (opt) => {
@@ -772,6 +804,8 @@
       window.addEventListener('keydown', (e) => {
         if (state.mode !== 'canvas') return;
         if (isEditingCanvasText()) return; // don't hijack typing while editing text/sticky
+        const isMeta = e.ctrlKey || e.metaKey;
+        if (isMeta && e.key.toLowerCase() === 'z') { e.preventDefault(); return e.shiftKey ? redoCanvas() : undoCanvas(); }
         const k = e.key.toLowerCase();
         if (k === 'v') useTool('select');
         if (k === 'p') useTool('draw');
@@ -786,7 +820,7 @@
             active.forEach(o => canvas.remove(o));
             canvas.discardActiveObject();
             canvas.requestRenderAll();
-            markDirty();
+            markDirty(); pushHistoryDebounced();
           }
         }
       });
@@ -799,9 +833,9 @@
       });
 
       // mark dirty on object changes
-      canvas.on('object:added', markDirty);
-      canvas.on('object:modified', markDirty);
-      canvas.on('object:removed', markDirty);
+      canvas.on('object:added', () => { markDirty(); pushHistoryDebounced(); });
+      canvas.on('object:modified', () => { markDirty(); pushHistoryDebounced(); });
+      canvas.on('object:removed', () => { markDirty(); pushHistoryDebounced(); });
 
       // Tool buttons + active styles
       const toolBtns = $$('#canvasPanel .tool');
@@ -816,6 +850,10 @@
         fsToolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === tool));
       };
       fsToolBtns.forEach(btn => btn.addEventListener('click', () => useTool(btn.dataset.tool)));
+      const fsUndo = document.getElementById('fsUndo');
+      if (fsUndo) fsUndo.addEventListener('click', undoCanvas);
+      const fsRedo = document.getElementById('fsRedo');
+      if (fsRedo) fsRedo.addEventListener('click', redoCanvas);
 
       // Controls
       $('#brushSize').addEventListener('input', (e) => {
@@ -824,7 +862,7 @@
         const active = canvas.getActiveObjects();
         if (active.length) {
           active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); });
-          canvas.requestRenderAll(); markDirty();
+          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
         }
         const fsBrush = document.getElementById('fsBrush'); if (fsBrush) fsBrush.value = String(sz);
       });
@@ -834,7 +872,7 @@
         const active = canvas.getActiveObjects();
         if (active.length) {
           active.forEach(o => applyColor(o, col));
-          canvas.requestRenderAll(); markDirty();
+          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
         }
         const fsColor = document.getElementById('fsColor'); if (fsColor) fsColor.value = col;
       });
@@ -959,7 +997,7 @@
       $('#snapToggle').addEventListener('change', (e) => { state.grid.snap = e.target.checked; });
       $('#gridSize').addEventListener('change', (e) => { state.grid.size = clamp(Number(e.target.value)||24, 4, 200); canvas.requestRenderAll(); });
       $('#canvasBg').addEventListener('input', (e) => {
-        canvas.setBackgroundColor(e.target.value || '#0f0f11', canvas.renderAll.bind(canvas)); markDirty();
+        canvas.setBackgroundColor(e.target.value || '#0f0f11', canvas.renderAll.bind(canvas)); markDirty(); pushHistoryDebounced();
       });
 
       function useTool(kind){
@@ -1002,6 +1040,7 @@
 
       // start in Move mode
       useTool('select');
+      pushHistory();
     }
 
     /* =============== MODE TOGGLE =============== */
@@ -1047,9 +1086,17 @@
       $('#docTitle').value = snap.title || 'Untitled note';
       if (state.quill) state.quill.root.innerHTML = snap.docHTML || '';
       if (state.canvas && snap.canvasJSON) {
+        state.suppressHistory = true;
         state.canvas.loadFromJSON(snap.canvasJSON, () => {
           if (snap.canvasBG) state.canvas.setBackgroundColor(snap.canvasBG, state.canvas.renderAll.bind(state.canvas));
           state.canvas.requestRenderAll();
+          // reset history to this state
+          try {
+            const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform'];
+            const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: state.canvas.backgroundColor || '#0f0f11' };
+            state.hist.stack = [initial]; state.hist.idx = 0;
+          } catch {}
+          state.suppressHistory = false;
         });
       }
       clearDirty();
@@ -1064,6 +1111,12 @@
         state.canvas.clear();
         const bg = $('#canvasBg').value || '#0f0f11';
         state.canvas.setBackgroundColor(bg, state.canvas.renderAll.bind(state.canvas));
+        // reset canvas history
+        try {
+          const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform'];
+          const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: state.canvas.backgroundColor || bg };
+          state.hist.stack = [initial]; state.hist.idx = 0;
+        } catch {}
       }
       clearDirty();
       // Immediately create placeholder entry so it appears in history/sidebar
