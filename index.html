@@ -628,54 +628,7 @@
       state.canvas = canvas;
       try { canvas.upperCanvasEl.setAttribute('tabindex','1'); } catch {}
 
-      // Fallback eraser brush if Fabric doesn't provide one
-      if (!fabric.EraserBrush) {
-        fabric.EraserBrush = fabric.util.createClass(fabric.PencilBrush, {
-          initialize: function(canvas){ this.callSuper('initialize', canvas); },
-          onMouseDown: function(pointer, options){
-            this.canvas.contextTop.save();
-            this.canvas.contextTop.globalCompositeOperation = 'destination-out';
-            this.color = 'rgba(0,0,0,1)';
-            return this.callSuper('onMouseDown', pointer, options);
-          },
-          onMouseMove: function(pointer, options){
-            return this.callSuper('onMouseMove', pointer, options);
-          },
-          onMouseUp: function(options){
-            const r = this.callSuper('onMouseUp', options);
-            try { this.canvas.contextTop.restore(); } catch {}
-            return r;
-          },
-          _finalizeAndAddPath: function() {
-            const ctx = this.canvas.contextTop;
-            ctx.closePath();
-            if (this._points && this._points.length > 1) {
-              const pathData = this.convertPointsToSVGPath(this._points).join('');
-              if (pathData === 'M 0 0 Q 0 0 0 0 L 0 0') { this.canvas.clearContext(this.canvas.contextTop); this._reset(); return null; }
-              const path = this.createPath(pathData);
-              path.set({
-                fill: null,
-                stroke: '#000',
-                strokeWidth: this.width,
-                globalCompositeOperation: 'destination-out',
-                selectable: false,
-                evented: false,
-                strokeUniform: true
-              });
-              // add to canvas and render
-              this.canvas.add(path);
-              this.canvas.requestRenderAll();
-              // hook: mark dirty and history if available
-              try { markDirty(); if (typeof pushHistoryDebounced === 'function') pushHistoryDebounced(); } catch {}
-              this._reset();
-              return path;
-            }
-            this.canvas.clearContext(this.canvas.contextTop);
-            this._reset();
-            return null;
-          }
-        });
-      }
+      // Use Fabric's native EraserBrush (available in Fabric 5+)
       const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
       function pushHistory(){
         if (!canvas || state.suppressHistory) return;
@@ -736,14 +689,9 @@
           });
           p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
         } else {
-          // Eraser path: use compositing fallback if EraserBrush not available
-          p.set({ selectable:false, evented:false, hasControls:false, hasBorders:false, fill:null, strokeUniform:true, eraser:true });
-          if (!fabric.EraserBrush) {
-            p.globalCompositeOperation = 'destination-out';
-            // make stroke fully transparent so no ink is seen if composite not applied on preview
-            p.stroke = 'rgba(0,0,0,1)';
-            p.strokeWidth = Number($('#brushSize').value || 12);
-          }
+          // In erase mode, do not keep any free-draw path on canvas
+          try { canvas.remove(p); } catch {}
+          return;
         }
         markDirty(); pushHistoryDebounced();
       });
@@ -986,61 +934,54 @@
         const cellW = 120, cellH = 40, pad = 2;
         const startX = (canvas.getWidth() - cols*cellW)/2;
         const startY = (canvas.getHeight() - rows*cellH)/2;
-        // draw grid lines
-        const lines = [];
+        const items = [];
         for (let r=0; r<=rows; r++){
           const y = startY + r*cellH;
-          lines.push(new fabric.Line([startX, y, startX + cols*cellW, y], { stroke: 'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+          items.push(new fabric.Line([startX, y, startX + cols*cellW, y], { stroke: 'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
         }
         for (let c=0; c<=cols; c++){
           const x = startX + c*cellW;
-          lines.push(new fabric.Line([x, startY, x, startY + rows*cellH], { stroke: 'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+          items.push(new fabric.Line([x, startY, x, startY + rows*cellH], { stroke: 'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
         }
-        lines.forEach(l => canvas.add(l));
-        // add cell textboxes
         for (let r=0; r<rows; r++){
           for (let c=0; c<cols; c++){
-            const tb = new fabric.Textbox('', { left: startX + c*cellW + pad, top: startY + r*cellH + pad, width: cellW - pad*2, fontSize: 16, fill: $('#brushColor').value || '#ffffff', erasable:true });
-            canvas.add(tb);
+            items.push(new fabric.Textbox('', { left: startX + c*cellW + pad, top: startY + r*cellH + pad, width: cellW - pad*2, fontSize: 16, fill: $('#brushColor').value || '#ffffff', erasable:true }));
           }
         }
+        const grp = new fabric.Group(items, { left: 0, top: 0, subTargetCheck: true, objectCaching: false, erasable:true });
+        canvas.add(grp);
         canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
       }
 
       function insertInvoice(){
+        const items = [];
         const cx = canvas.getWidth()/2; let y = Math.max(40, canvas.getHeight()*0.1);
         const mkText = (txt, opts={}) => new fabric.Textbox(txt, Object.assign({ left: cx-200, top: y, width: 400, fontSize: 20, fill: '#ffffff', textAlign:'center', erasable:true }, opts));
         const title = mkText('INVOICE', { fontSize: 28, fontWeight: '700' }); y += 40;
         const from = new fabric.Textbox('From:\\nYour Company\\nAddress', { left: cx-360, top: y, width: 240, fontSize: 14, fill:'#ffffff', erasable:true });
         const to   = new fabric.Textbox('Bill To:\\nClient Name\\nAddress', { left: cx+120, top: y, width: 240, fontSize: 14, fill:'#ffffff', erasable:true }); y += 90;
-        canvas.add(title, from, to);
-        // items table
+        items.push(title, from, to);
         const headers = ['Item','Qty','Price','Amount'];
         const cols = headers.length; const rows = 5; const cellW = 140; const cellH = 34; const startX = cx - (cols*cellW)/2; const startY = y;
         for (let i=0;i<=rows;i++){
-          const ly = startY + i*cellH;
-          canvas.add(new fabric.Line([startX, ly, startX + cols*cellW, ly], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+          const ly = startY + i*cellH; items.push(new fabric.Line([startX, ly, startX + cols*cellW, ly], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
         }
         for (let c=0;c<=cols;c++){
-          const lx = startX + c*cellW;
-          canvas.add(new fabric.Line([lx, startY, lx, startY + rows*cellH], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+          const lx = startX + c*cellW; items.push(new fabric.Line([lx, startY, lx, startY + rows*cellH], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
         }
-        headers.forEach((h,i)=>{
-          const tb = new fabric.Textbox(h, { left: startX + i*cellW + 6, top: startY + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', fontWeight:'600', erasable:true });
-          canvas.add(tb);
-        });
+        headers.forEach((h,i)=>{ items.push(new fabric.Textbox(h, { left: startX + i*cellW + 6, top: startY + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', fontWeight:'600', erasable:true })); });
         for (let r=1; r<rows; r++){
           for (let c=0; c<cols; c++){
-            const tb = new fabric.Textbox('', { left: startX + c*cellW + 6, top: startY + r*cellH + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', erasable:true });
-            canvas.add(tb);
+            items.push(new fabric.Textbox('', { left: startX + c*cellW + 6, top: startY + r*cellH + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', erasable:true }));
           }
         }
-        // totals
         y = startY + rows*cellH + 20;
         const notes = new fabric.Textbox('Notes', { left: startX, top: y, width: cellW*2, fontSize: 14, fill:'#ffffff', erasable:true });
         const totalLbl = new fabric.Textbox('Total:', { left: startX + cellW*2 + 20, top: y, width: cellW-20, fontSize: 16, fill:'#ffffff', textAlign:'right', erasable:true });
         const totalVal = new fabric.Textbox('$0.00', { left: startX + cellW*3 + 6, top: y, width: cellW-12, fontSize: 16, fill:'#ffffff', erasable:true });
-        canvas.add(notes, totalLbl, totalVal);
+        items.push(notes, totalLbl, totalVal);
+        const grp = new fabric.Group(items, { left: 0, top: 0, subTargetCheck: true, objectCaching: false, erasable:true });
+        canvas.add(grp);
         canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
       }
 
@@ -1220,17 +1161,10 @@
         }
 
         if (kind === 'erase') {
-          // Eraser behaves like brush and subtracts content
+          // Eraser uses native EraserBrush (Fabric 5+)
           canvas.isDrawingMode = true;
-          if (fabric.EraserBrush) {
-            canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
-            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
-          } else {
-            // fallback: use pencil brush; path will be converted in path:created
-            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-            canvas.freeDrawingBrush.color = '#000';
-            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
-          }
+          try { canvas.freeDrawingBrush = new fabric.EraserBrush(canvas); } catch { canvas.freeDrawingBrush = new fabric.PencilBrush(canvas); }
+          canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
           canvas.defaultCursor = 'crosshair';
           return;
         }
