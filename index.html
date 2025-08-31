@@ -1109,6 +1109,17 @@ function hexToRGBA(hex, a = 1) {
           $('#fsToolbarExit').textContent = 'Exit';
         }
       }
+        // Leave fullscreen canvas when switching away (e.g., to Settings) so the panel is visible on phones
+  if (m !== 'canvas') {
+    document.body.classList.remove('fs-canvas-on', 'fs-active');
+    const fsBtn = document.getElementById('fsToolbarExit');
+    if (fsBtn) fsBtn.textContent = 'Full';
+  }
+
+  // Keep the mobile toggle label accurate: show where tapping it will go next
+  const mbModeBtn = document.getElementById('mbMode');
+  if (mbModeBtn) mbModeBtn.textContent = (m === 'doc') ? 'Canvas' : 'Doc';
+
     }
 
     /* =============== SNAPSHOTS / SAVE / LOAD =============== */
@@ -1502,11 +1513,20 @@ function hexToRGBA(hex, a = 1) {
 
   <!-- Mobile bottom bar -->
   <nav class="mobile-bar fixed left-1/2 -translate-x-1/2 bottom-3 safe-pad-bottom px-2 py-1.5 glass border rounded-2xl shadow-lg flex items-center gap-1 z-[70]" style="border-color:var(--line); display:none">
-    <button id="mbNew" class="px-2 py-1.5 text-sm rounded-xl hover:bg-white/10 flex items-center" aria-label="New" onclick="newDocument()">
-      <span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
-    </button>
-    <button id="mbMode" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="Toggle mode" onclick="setMode(state.mode==='doc'?'canvas':'doc')">Doc</button>
-    <button id="mbTheme" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="Toggle theme" onclick="toggleTheme()">☀︎/🌙</button>
-  </nav>
+  <button id="mbNew" class="px-2 py-1.5 text-sm rounded-xl hover:bg-white/10 flex items-center" aria-label="New">
+    <span class="plus-glow" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </span>
+  </button>
+
+  <!-- Toggles between Doc/Canvas -->
+  <button id="mbMode" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="Toggle mode" onclick="setMode(state.mode==='doc'?'canvas':'doc')">Doc</button>
+
+  <!-- NEW: Settings button -->
+  <button id="mbSettings" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="Settings" onclick="setMode('settings')">⚙︎</button>
+
+  <button id="mbTheme" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="Toggle theme" onclick="toggleTheme()">☀︎/🌙</button>
+</nav>
+
 </body>
 </html>
