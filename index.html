@@ -223,8 +223,14 @@
 
     /* Menu panel polish */
     .menu-panel{ backdrop-filter: blur(12px); background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,0.35); border-radius: 12px; overflow: hidden; }
-    .menu-item{ width:100%; text-align:left; padding:8px 12px; }
+    .menu-item{ width:100%; text-align:left; padding:8px 12px; word-break:break-word }
     .menu-item:hover{ background: rgba(255,255,255,0.10); }
+    /* Toolbar spacing polish */
+    .ql-toolbar .ql-formats{ margin-right:6px }
+    .ql-toolbar .ql-picker-label, .ql-toolbar button{ padding:4px 6px }
+    /* Quill picker options: keep within viewport on mobile */
+    .ql-snow .ql-picker-options{ max-height:60vh; overflow:auto }
+    @media (max-width: 768px){ .ql-snow .ql-picker-options{ max-width:90vw; right:0 !important; left:auto !important } }
     /* Toolbar spacing polish */
     .ql-toolbar .ql-formats{ margin-right:6px }
     .ql-toolbar .ql-picker-label, .ql-toolbar button{ padding:4px 6px }
@@ -482,6 +488,19 @@
     const isSafari = () => /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
     function debounce(fn, ms=300){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args),ms) }; }
+    function hexToRGBA(hex, a=1){
+      try{
+        let h = hex.replace('#','');
+        if (h.length===3) h = h.split('').map(c=>c+c).join('');
+        const n = parseInt(h,16); const r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+        return `rgba(${r},${g},${b},${a})`;
+      }catch{ return `rgba(255,255,255,${a})`; }
+    }
+    function currentUIColor(){
+      const bc = document.getElementById('brushColor');
+      const val = bc?.value || '#ffffff';
+      return val;
+    }
     function flash(msg) {
       const div = document.createElement('div');
       div.textContent = msg;
@@ -650,20 +669,28 @@
       if (btnDocInvoice) btnDocInvoice.addEventListener('click', () => insertInvoiceDoc());
 
       function insertTableDoc(rows=3, cols=3){
-        const grid = `<div class=\"doc-grid\" style=\"grid-template-columns: repeat(${cols}, minmax(0,1fr));\">${Array.from({length:rows*cols}).map(()=>'<div class=\\"doc-cell\\" contenteditable=\\"true\\\"><br></div>').join('')}</div>`;
-        const html = `<div class=\"doc-widget\" contenteditable=\"false\" draggable=\"true\" data-type=\"table\"><div class=\"drag-handle\" title=\"Drag\"></div><div class=\"resize-handle\" title=\"Resize\"></div>${grid}</div>`;
+        const col = currentUIColor();
+        const border = hexToRGBA(col, 0.35);
+        const styleCell = `style=\\"border:1px solid ${border}; color:${col}\\"`;
+        const grid = `<div class=\"doc-grid\" style=\"grid-template-columns: repeat(${cols}, minmax(0,1fr));\">${Array.from({length:rows*cols}).map(()=>`<div class=\\"doc-cell\\" ${styleCell} contenteditable=\\"true\\\"><br></div>`).join('')}</div>`;
+        const widgetStyle = `style=\\"border-color:${border}; color:${col}\\"`;
+        const html = `<div class=\"doc-widget\" ${widgetStyle} contenteditable=\"false\" draggable=\"true\" data-type=\"table\"><div class=\"drag-handle\" title=\"Drag\"></div><div class=\"resize-handle\" title=\"Resize\"></div>${grid}</div>`;
         q.clipboard.dangerouslyPasteHTML(q.getSelection()?.index ?? q.getLength(), html);
         markDirty();
       }
 
       function insertInvoiceDoc(){
-        const header = `<div style=\"text-align:center; font-weight:700; font-size:22px; margin-bottom:8px\">INVOICE</div>`;
-        const parties = `<div style=\"display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px\"><div contenteditable=\"true\">From:<br>Your Company<br>Address</div><div contenteditable=\"true\">Bill To:<br>Client Name<br>Address</div></div>`;
-        const tableHead = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr 1fr;\"><div class=\"doc-cell\" style=\"font-weight:600\">Item</div><div class=\"doc-cell\" style=\"font-weight:600\">Qty</div><div class=\"doc-cell\" style=\"font-weight:600\">Price</div><div class=\"doc-cell\" style=\"font-weight:600\">Amount</div></div>`;
-        const rows = Array.from({length:4}).map(()=>`<div style=\"display:grid; grid-template-columns:2fr 1fr 1fr 1fr;\"><div class=\"doc-cell\" contenteditable=\"true\"><br></div><div class=\"doc-cell\" contenteditable=\"true\"><br></div><div class=\"doc-cell\" contenteditable=\"true\"><br></div><div class=\"doc-cell\" contenteditable=\"true\"><br></div></div>`).join('');
-        const totals = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px\"><div class=\"doc-cell\" contenteditable=\"true\">Notes</div><div style=\"text-align:right; font-weight:600\">Total:</div><div class=\"doc-cell\" contenteditable=\"true\">$0.00</div></div>`;
+        const col = currentUIColor();
+        const border = hexToRGBA(col, 0.35);
+        const header = `<div style=\"text-align:center; font-weight:700; font-size:22px; margin-bottom:8px; color:${col}\">INVOICE</div>`;
+        const parties = `<div style=\"display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; color:${col}\"><div contenteditable=\"true\">From:<br>Your Company<br>Address</div><div contenteditable=\"true\">Bill To:<br>Client Name<br>Address</div></div>`;
+        const thCell = `class=\\"doc-cell\\" style=\\"font-weight:600; border:1px solid ${border}; color:${col}\\"`;
+        const tdCell = `class=\\"doc-cell\\" style=\\"border:1px solid ${border}; color:${col}\\" contenteditable=\\"true\\"`;
+        const tableHead = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr 1fr;\"><div ${thCell}>Item</div><div ${thCell}>Qty</div><div ${thCell}>Price</div><div ${thCell}>Amount</div></div>`;
+        const rows = Array.from({length:4}).map(()=>`<div style=\"display:grid; grid-template-columns:2fr 1fr 1fr 1fr;\"><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div></div>`).join('');
+        const totals = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px\"><div class=\"doc-cell\" style=\"border:1px solid ${border}; color:${col}\" contenteditable=\"true\">Notes</div><div style=\"text-align:right; font-weight:600; color:${col}\">Total:</div><div class=\"doc-cell\" style=\"border:1px solid ${border}; color:${col}\" contenteditable=\"true\">$0.00</div></div>`;
         const body = `<div>${header}${parties}<div class=\"doc-grid\">${tableHead}${rows}</div>${totals}</div>`;
-        const html = `<div class=\"doc-widget\" contenteditable=\"false\" draggable=\"true\" data-type=\"invoice\"><div class=\"drag-handle\" title=\"Drag\"></div><div class=\"resize-handle\" title=\"Resize\"></div>${body}</div>`;
+        const html = `<div class=\"doc-widget\" style=\"border-color:${border}; color:${col}\" contenteditable=\"false\" draggable=\"true\" data-type=\"invoice\"><div class=\"drag-handle\" title=\"Drag\"></div><div class=\"resize-handle\" title=\"Resize\"></div>${body}</div>`;
         q.clipboard.dangerouslyPasteHTML(q.getSelection()?.index ?? q.getLength(), html);
         markDirty();
       }
