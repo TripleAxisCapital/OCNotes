@@ -219,6 +219,12 @@
       animation: ocGradientShift 6s ease-in-out infinite;
     }
     .plus-glow svg{ width:14px; height:14px; display:block }
+
+    /* Menus */
+    .menu-panel{ background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden }
+    .menu-item{ width:100%; text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+    .menu-item:last-child{ border-bottom:none }
+    .menu-item:hover{ background:rgba(255,255,255,0.08) }
   </style>
 </head>
 <body class="h-full selection:bg-white/20">
@@ -267,6 +273,9 @@
 
               <!-- Theme toggle -->
               <button id="themeBtn" title="Toggle Light/Dark" class="ml-2 px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">☀︎/🌙</button>
+
+              <!-- Help -->
+              <button id="helpBtn" title="Help & Shortcuts" class="ml-2 px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">?</button>
             </div>
           </div>
         </div>
@@ -292,6 +301,7 @@
         <input id="docTitle" class="bg-transparent outline-none text-lg md:text-xl font-semibold w-full" style="color:var(--text)" placeholder="Untitled note" />
       </div>
       <span id="dirtyDot" class="w-2.5 h-2.5 rounded-full bg-rose-400/80 hidden" title="Unsaved changes"></span>
+      <div id="docStats" class="ml-auto text-xs opacity-70" style="color:var(--muted)"></div>
     </div>
   </section>
 
@@ -382,7 +392,7 @@
     <div id="settingsPanel" class="hidden space-y-3">
       <div class="glass border rounded-2xl p-4 md:p-6" style="border-color:var(--line)">
         <h2 class="text-xl font-semibold">Settings</h2>
-        <div class="grid md:grid-cols-2 gap-4 mt-3">
+        <div class="grid md:grid-cols-2 gap-4 mt-3" id="settingsGrid">
           <div class="glass-2 border rounded-xl p-3" style="border-color:var(--line)">
             <div class="font-medium">Mobile document side padding</div>
             <div class="text-xs mb-3" style="color:var(--muted)">Default 12px. Affects left/right padding of the document preview on small screens.</div>
@@ -395,10 +405,27 @@
           <div class="glass-2 border rounded-xl p-3" style="border-color:var(--line)">
             <div class="font-medium">Toolbar density</div>
             <div class="flex gap-2 mt-2">
-              <button id="densityCozy" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Cozy</button>
-              <button id="densityCompact" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Compact</button>
+              <button data-density="cozy" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)" id="densityCozy">Cozy</button>
+              <button data-density="compact" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)" id="densityCompact">Compact</button>
             </div>
             <div class="text-xs mt-2" style="color:var(--muted)">Compact reduces gaps for tighter horizontal toolbars.</div>
+          </div>
+
+          <div class="glass-2 border rounded-xl p-3" style="border-color:var(--line)">
+            <div class="font-medium">Theme</div>
+            <div class="flex gap-2 mt-2" id="themeChoice">
+              <button data-theme="dark" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Dark</button>
+              <button data-theme="light" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Light</button>
+              <button data-theme="toggle" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Toggle</button>
+            </div>
+          </div>
+
+          <div class="glass-2 border rounded-xl p-3" style="border-color:var(--line)">
+            <div class="font-medium">Keyboard shortcuts</div>
+            <div class="text-xs mt-2" style="color:var(--muted)">Press <kbd>?</kbd> or click Help to see the list.</div>
+            <div class="mt-2">
+              <button id="openHelpFromSettings" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Open Help</button>
+            </div>
           </div>
         </div>
         <div class="mt-6 flex items-center justify-end gap-2">
@@ -436,6 +463,29 @@
     </div>
   </div>
 
+  <!-- ======= HELP MODAL ======= -->
+  <div id="helpModal" class="fixed inset-0 hidden z-pop">
+    <div class="absolute inset-0 bg-black/60" data-help-close></div>
+    <div class="absolute left-1/2 top-12 -translate-x-1/2 w-[min(720px,92vw)] glass border rounded-2xl p-5" style="border-color:var(--line)">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-lg font-semibold">Help & Shortcuts</h3>
+        <button data-help-close class="px-2 py-1 glass-2 border rounded-lg text-sm" style="border-color:var(--line)">Close</button>
+      </div>
+      <div class="text-sm space-y-3" style="color:var(--muted)">
+        <p><strong>Modes:</strong> Document, Canvas, Settings</p>
+        <ul class="list-disc ml-5">
+          <li><kbd>⌘/Ctrl + S</kbd> Save</li>
+          <li><kbd>⌘/Ctrl + P</kbd> Export PDF</li>
+          <li><kbd>Space</kbd> Pan canvas &middot; <kbd>Wheel</kbd> Zoom</li>
+          <li><kbd>⌘/Ctrl + Z</kbd> Undo (Canvas) &middot; <kbd>⌘/Ctrl + Shift + Z</kbd> Redo</li>
+          <li><kbd>V</kbd> Move &middot; <kbd>T</kbd> Text &middot; <kbd>N</kbd> Sticky &middot; <kbd>P</kbd> Pen &middot; <kbd>E</kbd> Erase</li>
+          <li><kbd>?</kbd> Toggle this Help</li>
+        </ul>
+        <p>Tip: In Canvas, the eraser truly punches through visuals using compositing—so it never draws “painted” color.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Hidden file input -->
   <input id="openFile" type="file" accept=".ocnote,application/json" class="hidden" />
 
@@ -444,25 +494,31 @@
 
   <script>
     /* =============== UTILITIES =============== */
-    const $  = (sel, el=document) => el.querySelector(sel);
-    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
-    const uid = () => 'oc_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-    const nowISO = () => new Date().toISOString();
-    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    const safeFileName = (name) => (name || 'note').replace(/[^a-z0-9\-]+/gi,'_');
-    const escapeHtml = (str) => (str+'').replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;","&gt;":"&gt;","\"":"&quot;","'":"&#39;"}[s]));
-    const niceDate = (iso) => { try { return new Date(iso).toLocaleString(); } catch { return iso; } }
-    const isSafari = () => /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const $  = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+const uid = () => 'oc_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+const nowISO = () => new Date().toISOString();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const safeFileName = (name) => (name || 'note').replace(/[^a-z0-9-]+/gi, '_');
+const escapeHtml = (str) =>
+  (str + '').replace(/[&<>"']/g, (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+const niceDate = (iso) => { try { return new Date(iso).toLocaleString(); } catch { return iso; } };
+const isSafari = () => /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-    function debounce(fn, ms=300){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args),ms) }; }
-    function hexToRGBA(hex, a=1){
-      try{
-        let h = hex.replace('#','');
-        if (h.length===3) h = h.split('').map(c=>c+c).join('');
-        const n = parseInt(h,16); const r=(n>>16)&255, g=(n>>8)&255, b=n&255;
-        return `rgba(${r},${g},${b},${a})`;
-      }catch{ return `rgba(255,255,255,${a})`; }
-    }
+function debounce(fn, ms = 300) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+function hexToRGBA(hex, a = 1) {
+  try {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+    const n = parseInt(h, 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return `rgba(${r},${g},${b},${a})`;
+  } catch { return `rgba(255,255,255,${a})`; }
+}
+
     function currentUIColor(){
       const bc = document.getElementById('brushColor');
       const val = bc?.value || '#ffffff';
@@ -484,12 +540,23 @@
       setTimeout(() => URL.revokeObjectURL(url), 4000);
     }
 
+    async function ensureHtmlDocx(){
+      if (window.htmlDocx && typeof window.htmlDocx.asBlob === 'function') return true;
+      return await new Promise((res) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/html-docx-js/dist/html-docx.js';
+        s.onload = () => res(!!(window.htmlDocx && window.htmlDocx.asBlob));
+        s.onerror = () => res(false);
+        document.head.appendChild(s);
+      });
+    }
+
     /* =============== PERSISTENCE =============== */
     const store = {
-      key: 'oc_notes_history_v4',
+      key: 'oc_notes_history_v5',
       themeKey: 'oc_theme',
       sidebarKey: 'oc_sidebar_open',
-      settingsKey: 'oc_settings_v1',
+      settingsKey: 'oc_settings_v2',
       loadAll() { try { return JSON.parse(localStorage.getItem(this.key)) || []; } catch { return []; } },
       saveAll(list) { localStorage.setItem(this.key, JSON.stringify(list)); },
       upsert(doc) {
@@ -516,7 +583,6 @@
       hist: { stack: [], idx: -1 },
       suppressHistory: false,
       currentTool: 'select',
-      awaitingPlacement: null,
       zoom: 1,
       isSpacePanning: false,
       grid: { show:false, snap:false, size:24, targetTol:10 },
@@ -596,22 +662,22 @@
 
       const q = new Quill('#quillEditor', { theme:'snow', modules:{ toolbar:'#quillToolbarShell' } });
       state.quill = q;
-      q.on('text-change', markDirty);
+      q.on('text-change', () => { markDirty(); updateDocStats(); });
 
       $('#docInsertInvoice')?.addEventListener('click', () => insertInvoiceDoc());
 
       function insertInvoiceDoc(){
         const col = currentUIColor();
         const border = hexToRGBA(col, 0.35);
-        const header = `<div style=\"text-align:center; font-weight:700; font-size:22px; margin-bottom:8px; color:${col}\">INVOICE</div>`;
-        const parties = `<div style=\"display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; color:${col}\"><div contenteditable=\"true\">From:<br>Your Company<br>Address</div><div contenteditable=\"true\">Bill To:<br>Client Name<br>Address</div></div>`;
-        const thCell = `class=\\"doc-cell\\" style=\\"font-weight:600; border:1px solid ${border}; color:${col}\\"`;
-        const tdCell = `class=\\"doc-cell\\" style=\\"border:1px solid ${border}; color:${col}\\" contenteditable=\\"true\\"`;
-        const tableHead = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr 1fr;\"><div ${thCell}>Item</div><div ${thCell}>Qty</div><div ${thCell}>Price</div><div ${thCell}>Amount</div></div>`;
-        const rows = Array.from({length:4}).map(()=>`<div style=\"display:grid; grid-template-columns:2fr 1fr 1fr 1fr;\"><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div></div>`).join('');
-        const totals = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px\"><div class=\"doc-cell\" style=\"border:1px solid ${border}; color:${col}\" contenteditable=\"true\">Notes</div><div style=\"text-align:right; font-weight:600; color:${col}\">Total:</div><div class=\"doc-cell\" style=\"border:1px solid ${border}; color:${col}\" contenteditable=\"true\">$0.00</div></div>`;
-        const body = `<div>${header}${parties}<div class=\"doc-grid\">${tableHead}${rows}</div>${totals}</div>`;
-        const html = `<div class=\"doc-widget\" style=\"border-color:${border}; color:${col}\" contenteditable=\"false\" draggable=\"true\" data-type=\"invoice\"><div class=\"drag-handle\" title=\"Drag\"></div><div class=\"resize-handle\" title=\"Resize\"></div>${body}</div>`;
+        const header = `<div style="text-align:center; font-weight:700; font-size:22px; margin-bottom:8px; color:${col}">INVOICE</div>`;
+        const parties = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; color:${col}"><div contenteditable="true">From:<br>Your Company<br>Address</div><div contenteditable="true">Bill To:<br>Client Name<br>Address</div></div>`;
+        const thCell = `class="doc-cell" style="font-weight:600; border:1px solid ${border}; color:${col}"`;
+        const tdCell = `class="doc-cell" style="border:1px solid ${border}; color:${col}" contenteditable="true"`;
+        const tableHead = `<div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr;"><div ${thCell}>Item</div><div ${thCell}>Qty</div><div ${thCell}>Price</div><div ${thCell}>Amount</div></div>`;
+        const rows = Array.from({length:4}).map(()=>`<div style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr;"><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div></div>`).join('');
+        const totals = `<div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px"><div class="doc-cell" style="border:1px solid ${border}; color:${col}" contenteditable="true">Notes</div><div style="text-align:right; font-weight:600; color:${col}">Total:</div><div class="doc-cell" style="border:1px solid ${border}; color:${col}" contenteditable="true">$0.00</div></div>`;
+        const body = `<div>${header}${parties}<div class="doc-grid">${tableHead}${rows}</div>${totals}</div>`;
+        const html = `<div class="doc-widget" style="border:1px dashed ${border}; padding:8px; border-radius:8px; color:${col}" contenteditable="false" draggable="true" data-type="invoice"><div class="drag-handle" title="Drag"></div><div class="resize-handle" title="Resize"></div>${body}</div>`;
         q.clipboard.dangerouslyPasteHTML(q.getSelection()?.index ?? q.getLength(), html);
         markDirty();
       }
@@ -659,16 +725,59 @@
         root.addEventListener('pointerup', () => { if (rs.el) { rs.el=null; markDirty(); } });
         root.addEventListener('pointercancel', () => { rs.el=null; });
 
-        root.addEventListener('input', (e) => { if (e.target.closest('.doc-widget')) markDirty(); });
+        root.addEventListener('input', (e) => { if (e.target.closest('.doc-widget')) { markDirty(); updateDocStats(); } });
       })();
+
+      function updateDocStats(){
+        try{
+          const text = q.getText() || '';
+          const words = (text.trim().match(/\\S+/g)||[]).length;
+          const chars = text.replace(/\\s/g,'').length;
+          $('#docStats').textContent = words + ' words · ' + chars + ' chars';
+        }catch{}
+      }
+      updateDocStats();
     }
 
-    /* =============== FABRIC CANVAS (eraser fixed) =============== */
+    /* =============== FABRIC CANVAS (Custom eraser that never draws) =============== */
     function initCanvas() {
       const host = $('#canvasHost');
       const cEl = $('#ocCanvas');
+
+      // --- Custom Eraser Brush (destination-out) for universal support ---
+      class CustomEraserBrush extends fabric.PencilBrush {
+        _finalizeAndAddPath() {
+          const ctx = this.canvas.contextTop;
+          ctx.closePath && ctx.closePath();
+          if (this.decimate) {
+            this._points = this.decimatePoints(this._points, this.decimate);
+          }
+          const pathData = this.convertPointsToSVGPath(this._points).join('');
+          if (pathData === 'M 0 0 Q 0 0 0 0 L 0 0 Z') {
+            this.canvas.requestRenderAll();
+            return;
+          }
+          const path = this.createPath(pathData);
+          path.globalCompositeOperation = 'destination-out'; // ← actual erase
+          path.fill = null;
+          path.stroke = 'rgba(0,0,0,1)';
+          path.strokeWidth = this.width;
+          path.strokeLineCap = this.strokeLineCap;
+          path.strokeLineJoin = this.strokeLineJoin;
+          path.strokeUniform = true;
+          path.selectable = false;
+          path.evented = false;
+          path.excludeFromExport = false;
+          path.eraser = true; // mark for history
+          this.canvas.add(path);
+          this.canvas.clearContext(this.canvas.contextTop);
+          this.canvas.requestRenderAll();
+          this._resetShadow && this._resetShadow();
+        }
+      }
+
       const canvas = new fabric.Canvas(cEl, {
-        backgroundColor: null, // host handles bg so eraser never wipes it
+        backgroundColor: null, // host holds bg so eraser never wipes it
         selection: true,
         preserveObjectStacking: true,
         perPixelTargetFind: true,
@@ -678,6 +787,7 @@
       try { canvas.upperCanvasEl.setAttribute('tabindex','1'); } catch {}
 
       const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
+
       function pushHistory(){
         if (!canvas || state.suppressHistory) return;
         try {
@@ -723,10 +833,11 @@
 
       // defaults
       canvas.isDrawingMode = false;
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
       canvas.freeDrawingBrush.width = 3;
       canvas.freeDrawingBrush.color = '#ffffff';
 
-      // tool handling
+      // --- Tool logic ---
       function useTool(kind){
         state.currentTool = kind;
         canvas.isDrawingMode = false;
@@ -741,9 +852,7 @@
 
         if (kind === 'draw') {
           canvas.isDrawingMode = true;
-          if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) {
-            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-          }
+          canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
           canvas.freeDrawingBrush.color = $('#brushColor').value || '#ffffff';
           canvas.freeDrawingBrush.width = Number($('#brushSize').value || 3);
           canvas.defaultCursor = 'crosshair';
@@ -755,21 +864,15 @@
         }
         if (kind === 'erase') {
           canvas.isDrawingMode = true;
+          // Prefer native EraserBrush if available (Fabric plugin); else custom one
           if (fabric.EraserBrush) {
-            canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
-            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
+            const eb = new fabric.EraserBrush(canvas);
+            eb.width = Number($('#brushSize').value || 12);
+            canvas.freeDrawingBrush = eb;
           } else {
-            // Fallback: destination-out strokes
-            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
-            canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)';
-            canvas.freeDrawingBrush._finalizeAndAddPath = function () {
-              const path = this._createPath(this._points);
-              path.globalCompositeOperation = 'destination-out';
-              path.fill = null; path.stroke = 'rgba(0,0,0,1)'; path.strokeUniform = true;
-              path.selectable = false; path.evented = false;
-              this.canvas.add(path); this.canvas.requestRenderAll(); this._resetShadow?.(); this._reset?.();
-            };
+            const ceb = new CustomEraserBrush(canvas);
+            ceb.width = Number($('#brushSize').value || 12);
+            canvas.freeDrawingBrush = ceb;
           }
           canvas.defaultCursor = 'crosshair';
           return;
@@ -793,10 +896,12 @@
       canvas.on('path:created', (e) => {
         const p = e.path;
         if (state.currentTool === 'erase') {
+          // eraser strokes: ensure non-interactive + uniform
           p.selectable = false; p.evented = false; p.strokeUniform = true;
           markDirty(); pushHistoryDebounced();
           return;
         }
+        // normal pen strokes
         p.set({
           selectable:true, evented:true, hasControls:true, hasBorders:true,
           hoverCursor:'move', fill:null, strokeUniform:true, erasable:true
@@ -852,6 +957,15 @@
         const isMeta = e.ctrlKey || e.metaKey;
         if (isMeta && e.key.toLowerCase() === 'z') { e.preventDefault(); return e.shiftKey ? redoCanvas() : undoCanvas(); }
         if (e.code === 'Space' && !state.isSpacePanning) { state.isSpacePanning = true; canvas.isDragging = true; canvas.selection = false; }
+        // quick tool shortcuts
+        if (!isMeta && !e.shiftKey && !e.altKey) {
+          const k = e.key.toLowerCase();
+          if (k==='v') useTool('select');
+          if (k==='t') useTool('text');
+          if (k==='n') useTool('sticky');
+          if (k==='p') useTool('draw');
+          if (k==='e') useTool('erase');
+        }
       });
       window.addEventListener('keyup', (e) => {
         if (e.code === 'Space') { state.isSpacePanning = false; canvas.isDragging = false; canvas.selection = (state.currentTool === 'select'); }
@@ -866,16 +980,20 @@
       // brush controls
       $('#brushSize').addEventListener('input', (e) => {
         const sz = Number(e.target.value || 3);
-        if (canvas.isDrawingMode) canvas.freeDrawingBrush.width = sz;
+        if (canvas.isDrawingMode && canvas.freeDrawingBrush) canvas.freeDrawingBrush.width = sz;
         const active = canvas.getActiveObjects();
         if (active.length) {
-          active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); });
+          active.forEach(o => { if (o.type === 'path' && !o.eraser) o.set({ strokeWidth: sz }); });
           canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
         }
         const fsBrush = document.getElementById('fsBrush'); if (fsBrush) fsBrush.value = String(sz);
       });
       function applyBrushColor(col){
-        try { if (state.currentTool !== 'erase' && canvas.freeDrawingBrush && canvas.freeDrawingBrush.color !== undefined) canvas.freeDrawingBrush.color = col; } catch {}
+        try {
+          if (state.currentTool !== 'erase' && canvas.freeDrawingBrush && canvas.freeDrawingBrush.color !== undefined) {
+            canvas.freeDrawingBrush.color = col;
+          }
+        } catch {}
       }
       $('#brushColor').addEventListener('input', (e) => {
         const col = e.target.value || '#ffffff';
@@ -883,7 +1001,7 @@
         const active = canvas.getActiveObjects();
         if (active.length) {
           active.forEach(o => {
-            if (o.type === 'path') o.set({ stroke: col });
+            if (o.type === 'path' && !o.eraser) o.set({ stroke: col });
             else if (/text/.test(o.type)) o.set({ fill: col });
             else if (o.type === 'group' && o._objects) o._objects.forEach(ch => { if (/text/.test(ch.type)) ch.set({ fill: col }); });
           });
@@ -900,7 +1018,7 @@
           applyBrushColor(col);
           const active = canvas.getActiveObjects();
           if (active.length) {
-            active.forEach(o => { if (o.type === 'path') o.set({ stroke: col }); else if (/text/.test(o.type)) o.set({ fill: col }); });
+            active.forEach(o => { if (o.type === 'path' && !o.eraser) o.set({ stroke: col }); else if (/text/.test(o.type)) o.set({ fill: col }); });
             canvas.requestRenderAll(); markDirty();
           }
         };
@@ -913,10 +1031,10 @@
         fsBrush.addEventListener('input', (e) => {
           const sz = Number(e.target.value || 3);
           const main = document.getElementById('brushSize'); if (main) main.value = String(sz);
-          if (canvas.isDrawingMode) canvas.freeDrawingBrush.width = sz;
+          if (canvas.isDrawingMode && canvas.freeDrawingBrush) canvas.freeDrawingBrush.width = sz;
           const active = canvas.getActiveObjects();
           if (active.length) {
-            active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); });
+            active.forEach(o => { if (o.type === 'path' && !o.eraser) o.set({ strokeWidth: sz }); });
             canvas.requestRenderAll(); markDirty();
           }
         });
@@ -924,7 +1042,7 @@
 
       // actions
       $('#clearCanvas').addEventListener('click', () => {
-        if (confirm('Clear the canvas?')) { canvas.clear(); host.style.backgroundColor = $('#canvasBg').value || '#0f0f11'; markDirty(); }
+        if (confirm('Clear the canvas?')) { canvas.clear(); host.style.backgroundColor = $('#canvasBg').value || '#0f0f11'; markDirty(); pushHistoryDebounced(); }
       });
       $('#zoomIn').addEventListener('click', () => setZoom(state.zoom * 1.15));
       $('#zoomOut').addEventListener('click', () => setZoom(state.zoom / 1.15));
@@ -947,8 +1065,29 @@
       $('#gridSize').addEventListener('change', (e) => { state.grid.size = clamp(Number(e.target.value)||24, 4, 200); canvas.requestRenderAll(); });
       $('#canvasBg').addEventListener('input', (e) => { host.style.backgroundColor = e.target.value || '#0f0f11'; markDirty(); pushHistoryDebounced(); });
 
+      // draw grid under everything when requested
+      const originalRenderAll = canvas.renderAll.bind(canvas);
+      canvas.renderAll = function(){
+        const ctx = this.getContext();
+        const w = this.getWidth(), h = this.getHeight();
+        ctx.save();
+        // background color from host
+        // (the canvas itself is transparent; color is visually under)
+        originalRenderAll();
+        if (state.grid.show) {
+          const size = state.grid.size;
+          ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+          ctx.lineWidth = 1;
+          for (let x=0; x<w; x+=size) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+          for (let y=0; y<h; y+=size) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+        }
+        ctx.restore();
+      };
+
       // history start
-      pushHistory();
+      host.style.backgroundColor = $('#canvasBg').value || '#0f0f11';
+      const initial = { json: canvas.toJSON(SAVE_PROPS), bg: host.style.backgroundColor };
+      state.hist.stack = [initial]; state.hist.idx = 0;
     }
 
     /* =============== MODE TOGGLE =============== */
@@ -978,10 +1117,10 @@
       const docHTML = state.quill ? state.quill.root.innerHTML : '';
       let canvasJSON = null, canvasPNG = null, canvasBG = $('#canvasHost').style.backgroundColor || '#0f0f11';
       if (state.canvas) {
-        canvasJSON = state.canvas.toJSON(['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation']);
+        canvasJSON = state.canvas.toJSON(['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser']);
         try { canvasPNG = state.canvas.toDataURL({ format:'png', multiplier: 2, quality: 1.0 }); } catch { canvasPNG = null; }
       }
-      return { id: state.id, title, updatedAt: nowISO(), docHTML, canvasJSON, canvasPNG, canvasBG, version: 6 };
+      return { id: state.id, title, updatedAt: nowISO(), docHTML, canvasJSON, canvasPNG, canvasBG, version: 7 };
     }
     function applySnapshot(snap) {
       state.id = snap.id || uid();
@@ -1056,9 +1195,11 @@
       </body></html>`;
     }
 
-    /* =============== EXPORT ACTIONS =============== */
+    /* =============== EXPORT ACTIONS (hardened) =============== */
     async function exportDocx() {
       try {
+        const ok = await ensureHtmlDocx();
+        if (!ok) throw new Error('html-docx-js failed to load');
         const snap = getSnapshot();
         const html = buildStandaloneHTML(snap);
         let blob = window.htmlDocx.asBlob(html, {
@@ -1194,6 +1335,14 @@
         if (k==='html') exportHTML();
         if (k==='json') exportJSON();
       }));
+
+      // Help modal
+      const openHelp = () => $('#helpModal').classList.remove('hidden');
+      const closeHelp = () => $('#helpModal').classList.add('hidden');
+      $('#helpBtn')?.addEventListener('click', openHelp);
+      $('#openHelpFromSettings')?.addEventListener('click', openHelp);
+      $$('#helpModal [data-help-close]').forEach(b => b.addEventListener('click', closeHelp));
+      document.addEventListener('keydown', (e) => { if (e.key === '?') { e.preventDefault(); openHelp(); } if (e.key==='Escape') closeHelp(); });
     }
     function wireShortcuts() {
       window.addEventListener('keydown', (e) => {
@@ -1203,23 +1352,55 @@
       });
     }
 
-    /* =============== SETTINGS =============== */
+    /* =============== SETTINGS (robust controller) =============== */
     function applySettingsToUI(){
       document.documentElement.style.setProperty('--mobile-side-pad', (state.settings.mobileSidePad||12) + 'px');
       document.documentElement.style.setProperty('--toolbar-gap', state.settings.density==='compact' ? '4px' : '6px');
     }
     function wireSettings(){
+      // Initialize controls
       const range = $('#setMobilePad'), num = $('#setMobilePadNumber');
-      range.value = String(state.settings.mobileSidePad||12);
-      num.value = String(state.settings.mobileSidePad||12);
-      range.addEventListener('input', ()=>{ num.value=range.value; state.settings.mobileSidePad=Number(range.value); applySettingsToUI(); try{ window.ocFitDoc && window.ocFitDoc(); }catch{} });
-      num.addEventListener('input', ()=>{ const v=clamp(Number(num.value)||12,8,28); range.value=String(v); state.settings.mobileSidePad=v; applySettingsToUI(); try{ window.ocFitDoc && window.ocFitDoc(); }catch{} });
+      const setVals = (v) => { range.value = String(v); num.value = String(v); };
+      setVals(state.settings.mobileSidePad||12);
 
-      $('#densityCozy')?.addEventListener('click', ()=>{ state.settings.density='cozy'; applySettingsToUI(); });
-      $('#densityCompact')?.addEventListener('click', ()=>{ state.settings.density='compact'; applySettingsToUI(); });
-
-      $('#settingsApply')?.addEventListener('click', ()=>{ store.saveSettings(state.settings); flash('Settings saved'); });
-      $('#settingsBack')?.addEventListener('click', ()=> setMode('doc'));
+      // Unified event delegation for Settings panel (fixes non-working clicks)
+      const panel = $('#settingsPanel');
+      panel.addEventListener('input', (e) => {
+        const t = e.target;
+        if (t.id === 'setMobilePad') {
+          const v = clamp(Number(t.value)||12, 8, 28);
+          state.settings.mobileSidePad = v; $('#setMobilePadNumber').value = String(v);
+          applySettingsToUI(); try{ window.ocFitDoc && window.ocFitDoc(); }catch{}
+        }
+        if (t.id === 'setMobilePadNumber') {
+          const v = clamp(Number(t.value)||12, 8, 28);
+          state.settings.mobileSidePad = v; $('#setMobilePad').value = String(v);
+          applySettingsToUI(); try{ window.ocFitDoc && window.ocFitDoc(); }catch{}
+        }
+      });
+      panel.addEventListener('click', (e) => {
+        const b = e.target.closest('button'); if (!b) return;
+        const dens = b.getAttribute('data-density');
+        if (dens === 'cozy' || dens === 'compact') {
+          state.settings.density = dens; applySettingsToUI(); flash('Toolbar density: ' + dens);
+          return;
+        }
+        if (b.id === 'settingsApply') {
+          store.saveSettings(state.settings); flash('Settings saved');
+          return;
+        }
+        if (b.id === 'settingsBack') {
+          setMode('doc'); return;
+        }
+        if (b.parentElement?.id === 'themeChoice') {
+          const th = b.getAttribute('data-theme');
+          if (th === 'toggle') toggleTheme(); else applyTheme(th);
+          return;
+        }
+        if (b.id === 'openHelpFromSettings') {
+          $('#helpBtn')?.click(); return;
+        }
+      });
     }
 
     /* =============== BOOT =============== */
@@ -1321,7 +1502,7 @@
 
   <!-- Mobile bottom bar -->
   <nav class="mobile-bar fixed left-1/2 -translate-x-1/2 bottom-3 safe-pad-bottom px-2 py-1.5 glass border rounded-2xl shadow-lg flex items-center gap-1 z-[70]" style="border-color:var(--line); display:none">
-    <button id="mbNew" class="px-2 py-1.5 text-sm rounded-xl hover:bg-white/10 flex items-center" aria-label="New">
+    <button id="mbNew" class="px-2 py-1.5 text-sm rounded-xl hover:bg-white/10 flex items-center" aria-label="New" onclick="newDocument()">
       <span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
     </button>
     <button id="mbMode" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="Toggle mode" onclick="setMode(state.mode==='doc'?'canvas':'doc')">Doc</button>
