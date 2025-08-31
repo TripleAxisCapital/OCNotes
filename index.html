@@ -218,6 +218,20 @@
     .menu-panel{ backdrop-filter: blur(12px); background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,0.35); border-radius: 12px; overflow: hidden; }
     .menu-item{ width:100%; text-align:left; padding:8px 12px; }
     .menu-item:hover{ background: rgba(255,255,255,0.10); }
+    /* Toolbar spacing polish */
+    .ql-toolbar .ql-formats{ margin-right:6px }
+    .ql-toolbar .ql-picker-label, .ql-toolbar button{ padding:4px 6px }
+    .canvas-fs-toolbar button{ padding:4px 8px }
+    .canvas-fs-toolbar input{ margin:0 2px }
+
+    /* Document widgets (tables/invoices) */
+    .doc-widget{ position:relative; border:1px solid var(--line); border-radius:12px; background:var(--panel-2); padding:8px; margin:12px 0; user-select:text; -webkit-user-select:text; max-width:100% }
+    .doc-widget .drag-handle{ position:absolute; top:6px; left:6px; width:18px; height:18px; border-radius:6px; background:var(--panel); border:1px solid var(--line); display:grid; place-content:center; cursor:grab }
+    .doc-widget .drag-handle::before{ content:'⋮⋮'; font-size:10px; color:var(--muted) }
+    .doc-widget .resize-handle{ position:absolute; right:6px; bottom:6px; width:14px; height:14px; border-right:2px solid var(--line); border-bottom:2px solid var(--line); cursor:nwse-resize; opacity:0.8 }
+    .doc-widget [contenteditable="true"]{ outline:none }
+    .doc-grid{ display:grid; gap:0 }
+    .doc-cell{ border:1px solid var(--line); padding:8px; min-height:28px }
 
     /* Quill picker dropdown fixes (mobile + desktop) */
     .ql-snow .ql-picker{ color: var(--text); }
@@ -629,47 +643,70 @@
       if (btnDocInvoice) btnDocInvoice.addEventListener('click', () => insertInvoiceDoc());
 
       function insertTableDoc(rows=3, cols=3){
-        const cellStyle = 'border:1px solid var(--line); padding:8px; min-height:28px;';
-        let html = '<div style="display:grid; grid-template-columns: repeat(' + cols + ', minmax(0,1fr)); gap:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:12px 0;">';
-        for (let r=0; r<rows; r++){
-          for (let c=0; c<cols; c++){
-            html += '<div style="' + cellStyle + '" contenteditable="true"><br></div>';
-          }
-        }
-        html += '</div>';
+        const grid = `<div class=\"doc-grid\" style=\"grid-template-columns: repeat(${cols}, minmax(0,1fr));\">${Array.from({length:rows*cols}).map(()=>'<div class=\\"doc-cell\\" contenteditable=\\"true\\\"><br></div>').join('')}</div>`;
+        const html = `<div class=\"doc-widget\" contenteditable=\"false\" draggable=\"true\" data-type=\"table\"><div class=\"drag-handle\" title=\"Drag\"></div><div class=\"resize-handle\" title=\"Resize\"></div>${grid}</div>`;
         q.clipboard.dangerouslyPasteHTML(q.getSelection()?.index ?? q.getLength(), html);
         markDirty();
       }
 
       function insertInvoiceDoc(){
-        const html = `
-          <div style="margin:16px 0; padding:12px; border:1px solid var(--line); border-radius:12px">
-            <div style="text-align:center; font-weight:700; font-size:22px; margin-bottom:8px">INVOICE</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px">
-              <div contenteditable="true">From:<br>Your Company<br>Address</div>
-              <div contenteditable="true">Bill To:<br>Client Name<br>Address</div>
-            </div>
-            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; border:1px solid var(--line); border-radius:8px; overflow:hidden;">
-              <div style="padding:8px; border-right:1px solid var(--line); font-weight:600">Item</div>
-              <div style="padding:8px; border-right:1px solid var(--line); font-weight:600">Qty</div>
-              <div style="padding:8px; border-right:1px solid var(--line); font-weight:600">Price</div>
-              <div style="padding:8px; font-weight:600">Amount</div>
-              ${Array.from({length:4}).map(()=>`
-                <div style="padding:8px; border-top:1px solid var(--line); border-right:1px solid var(--line)" contenteditable="true"><br></div>
-                <div style="padding:8px; border-top:1px solid var(--line); border-right:1px solid var(--line)" contenteditable="true"><br></div>
-                <div style="padding:8px; border-top:1px solid var(--line); border-right:1px solid var(--line)" contenteditable="true"><br></div>
-                <div style="padding:8px; border-top:1px solid var(--line)" contenteditable="true"><br></div>
-              `).join('')}
-            </div>
-            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px">
-              <div style="border:1px solid var(--line); border-radius:8px; padding:8px" contenteditable="true">Notes</div>
-              <div style="text-align:right; font-weight:600">Total:</div>
-              <div style="border:1px solid var(--line); border-radius:8px; padding:8px" contenteditable="true">$0.00</div>
-            </div>
-          </div>`;
+        const header = `<div style=\"text-align:center; font-weight:700; font-size:22px; margin-bottom:8px\">INVOICE</div>`;
+        const parties = `<div style=\"display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px\"><div contenteditable=\"true\">From:<br>Your Company<br>Address</div><div contenteditable=\"true\">Bill To:<br>Client Name<br>Address</div></div>`;
+        const tableHead = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr 1fr;\"><div class=\"doc-cell\" style=\"font-weight:600\">Item</div><div class=\"doc-cell\" style=\"font-weight:600\">Qty</div><div class=\"doc-cell\" style=\"font-weight:600\">Price</div><div class=\"doc-cell\" style=\"font-weight:600\">Amount</div></div>`;
+        const rows = Array.from({length:4}).map(()=>`<div style=\"display:grid; grid-template-columns:2fr 1fr 1fr 1fr;\"><div class=\"doc-cell\" contenteditable=\"true\"><br></div><div class=\"doc-cell\" contenteditable=\"true\"><br></div><div class=\"doc-cell\" contenteditable=\"true\"><br></div><div class=\"doc-cell\" contenteditable=\"true\"><br></div></div>`).join('');
+        const totals = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px\"><div class=\"doc-cell\" contenteditable=\"true\">Notes</div><div style=\"text-align:right; font-weight:600\">Total:</div><div class=\"doc-cell\" contenteditable=\"true\">$0.00</div></div>`;
+        const body = `<div>${header}${parties}<div class=\"doc-grid\">${tableHead}${rows}</div>${totals}</div>`;
+        const html = `<div class=\"doc-widget\" contenteditable=\"false\" draggable=\"true\" data-type=\"invoice\"><div class=\"drag-handle\" title=\"Drag\"></div><div class=\"resize-handle\" title=\"Resize\"></div>${body}</div>`;
         q.clipboard.dangerouslyPasteHTML(q.getSelection()?.index ?? q.getLength(), html);
         markDirty();
       }
+
+      // Doc widget interactions: drag to reorder; resize to change width
+      (function wireDocWidgets(){
+        const root = q.root;
+        let dragEl = null;
+        root.addEventListener('dragstart', (e) => {
+          const w = e.target.closest('.doc-widget');
+          if (!w) { e.preventDefault(); return; }
+          dragEl = w; w.style.opacity = '0.5';
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', 'doc-widget');
+        });
+        root.addEventListener('dragend', () => { if (dragEl) dragEl.style.opacity=''; dragEl=null; });
+        root.addEventListener('dragover', (e) => { if (dragEl) e.preventDefault(); });
+        root.addEventListener('drop', (e) => {
+          if (!dragEl) return; e.preventDefault();
+          const target = e.target.closest('.doc-widget');
+          const parent = root;
+          if (target && target !== dragEl) {
+            const rect = target.getBoundingClientRect();
+            if (e.clientY < rect.top + rect.height/2) parent.insertBefore(dragEl, target);
+            else parent.insertBefore(dragEl, target.nextSibling);
+          }
+          dragEl.style.opacity=''; dragEl=null; markDirty();
+        });
+
+        // Resize handle
+        let rs = { el:null, startX:0, startW:0 };
+        root.addEventListener('pointerdown', (e) => {
+          if (!e.target.classList.contains('resize-handle')) return;
+          const w = e.target.closest('.doc-widget'); if (!w) return;
+          rs.el = w; rs.startX = e.clientX; rs.startW = w.offsetWidth;
+          e.preventDefault(); e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+        });
+        root.addEventListener('pointermove', (e) => {
+          if (!rs.el) return;
+          const dx = (e.clientX - rs.startX);
+          const maxW = root.clientWidth - 16; const minW = 200;
+          const newW = Math.max(minW, Math.min(maxW, rs.startW + dx));
+          rs.el.style.width = newW + 'px';
+        });
+        root.addEventListener('pointerup', () => { if (rs.el) { rs.el=null; markDirty(); } });
+        root.addEventListener('pointercancel', () => { rs.el=null; });
+
+        // Mark dirty on edits inside widgets
+        root.addEventListener('input', (e) => { if (e.target.closest('.doc-widget')) markDirty(); });
+      })();
     }
 
     /* =============== FABRIC CANVAS =============== */
