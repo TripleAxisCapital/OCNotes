@@ -700,7 +700,7 @@
       const resize = () => {
         const vv = window.visualViewport;
         const vw = (vv?.width) ? Math.round(vv.width) : (host.clientWidth || window.innerWidth || 1200);
-        const fsOn = !!document.fullscreenElement || document.body.classList.contains('fs-canvas-on');
+        const fsOn = document.body.classList.contains('fs-canvas-on');
         const vh = (vv?.height) ? Math.round(vv.height) : window.innerHeight;
         const h = fsOn ? vh : Math.max(600, window.innerHeight - 260);
         cEl.width = vw; cEl.height = h;
@@ -975,9 +975,13 @@
         }
         const fsBrush = document.getElementById('fsBrush'); if (fsBrush) fsBrush.value = String(sz);
       });
+      function applyBrushColor(col){
+        try { if (canvas.freeDrawingBrush && canvas.freeDrawingBrush.color !== undefined) canvas.freeDrawingBrush.color = col; } catch {}
+      }
       $('#brushColor').addEventListener('input', (e) => {
         const col = e.target.value || '#ffffff';
-        if (canvas.isDrawingMode) { canvas.freeDrawingBrush.color = col; return; }
+        // always update pen color for next/active drawing
+        applyBrushColor(col);
         const active = canvas.getActiveObjects();
         if (active.length) {
           active.forEach(o => applyColor(o, col));
@@ -988,18 +992,20 @@
       const fsColor = document.getElementById('fsColor');
       if (fsColor) {
         try { fsColor.value = document.getElementById('brushColor').value || '#ffffff'; } catch {}
-        fsColor.addEventListener('input', (e) => {
+        const onFsColor = (e) => {
           const col = e.target.value || '#ffffff';
           // sync main color
           const bc = document.getElementById('brushColor'); if (bc) bc.value = col;
           // apply like main handler
-          if (canvas.isDrawingMode) { canvas.freeDrawingBrush.color = col; return; }
+          applyBrushColor(col);
           const active = canvas.getActiveObjects();
           if (active.length) {
             active.forEach(o => applyColor(o, col));
             canvas.requestRenderAll(); markDirty();
           }
-        });
+        };
+        fsColor.addEventListener('input', onFsColor);
+        fsColor.addEventListener('change', onFsColor);
       }
       const fsBrush = document.getElementById('fsBrush');
       if (fsBrush) {
@@ -1034,38 +1040,23 @@
       $('#zoomLevel').addEventListener('change', (e) => setZoom(clamp((Number(e.target.value)||100)/100, 0.1, 5)));
       
       // Fullscreen toggle
-      const fsBtn = document.getElementById('canvasFullscreen');
-      function isFullscreen(){ return !!document.fullscreenElement || document.body.classList.contains('fs-canvas-on'); }
-      async function enterFS(){
+      function isFullscreen(){ return document.body.classList.contains('fs-canvas-on'); }
+      function enterFS(){
         try { setMode && setMode('canvas'); } catch {}
-        const elem = host;
-        if (elem.requestFullscreen) { try { await elem.requestFullscreen({ navigationUI: 'hide' }); } catch(_) { document.body.classList.add('fs-canvas-on'); } }
-        else { document.body.classList.add('fs-canvas-on'); }
+        document.body.classList.add('fs-canvas-on');
         document.body.classList.add('fs-active');
-        fsBtn && (fsBtn.textContent = 'Exit');
         const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Exit';
         resize();
       }
-      async function exitFS(){
-        if (document.fullscreenElement && document.exitFullscreen) { try { await document.exitFullscreen(); } catch(_) { document.body.classList.remove('fs-canvas-on'); } }
-        else { document.body.classList.remove('fs-canvas-on'); }
+      function exitFS(){
+        document.body.classList.remove('fs-canvas-on');
         document.body.classList.remove('fs-active');
-        fsBtn && (fsBtn.textContent = 'Full');
         const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Full';
         resize();
       }
       function toggleFS(){ isFullscreen() ? exitFS() : enterFS(); }
-      fsBtn && fsBtn.addEventListener('click', toggleFS);
-      document.addEventListener('fullscreenchange', () => {
-        const on = isFullscreen();
-        document.body.classList.toggle('fs-active', on);
-        if (fsBtn) fsBtn.textContent = on ? 'Exit' : 'Full';
-        const fsTB = document.getElementById('fsToolbarExit');
-        if (fsTB) fsTB.textContent = on ? 'Exit' : 'Full';
-        resize();
-      });
       const fsToolbarExit = document.getElementById('fsToolbarExit');
-      if (fsToolbarExit) fsToolbarExit.addEventListener('click', () => { isFullscreen() ? exitFS() : enterFS(); });
+      if (fsToolbarExit) fsToolbarExit.addEventListener('click', toggleFS);
       window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isFullscreen()) { e.preventDefault(); exitFS(); } });
       function setZoom(z){ state.zoom = clamp(z, 0.1, 5); const c = new fabric.Point(canvas.getWidth()/2, canvas.getHeight()/2); canvas.zoomToPoint(c, state.zoom); $('#zoomLevel').value = Math.round(state.zoom*100); }
       function resetViewport(){ state.zoom = 1; canvas.setViewportTransform([1,0,0,1,0,0]); $('#zoomLevel').value = 100; canvas.requestRenderAll(); }
@@ -1185,10 +1176,9 @@
         state.canvas && state.canvas.requestRenderAll();
         const mb = document.getElementById('mbMode'); if (mb) mb.textContent = 'Canvas';
         // On small screens, present immersive canvas automatically
-        if (window.innerWidth <= 1024 && !document.body.classList.contains('fs-canvas-on') && !document.fullscreenElement) {
+        if (window.innerWidth <= 1024 && !document.body.classList.contains('fs-canvas-on')) {
           document.body.classList.add('fs-canvas-on');
           document.body.classList.add('fs-active');
-          const fsBtn = document.getElementById('canvasFullscreen'); if (fsBtn) fsBtn.textContent = 'Exit';
           const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Exit';
         }
       }
