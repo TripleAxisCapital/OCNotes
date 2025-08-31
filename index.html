@@ -1092,35 +1092,43 @@ function hexToRGBA(hex, a = 1) {
 
     /* =============== MODE TOGGLE =============== */
     function setMode(m) {
-      state.mode = m;
-      $('#docPanel').classList.toggle('hidden', m!=='doc');
-      $('#canvasPanel').classList.toggle('hidden', m!=='canvas');
-      $('#settingsPanel').classList.toggle('hidden', m!=='settings');
+  state.mode = m;
 
-      $('#modeDoc').classList.toggle('bg-white/10', m==='doc');
-      $('#modeCanvas').classList.toggle('bg-white/10', m==='canvas');
-      $('#modeSettings').classList.toggle('bg-white/10', m==='settings');
+  // Show the active panel
+  $('#docPanel').classList.toggle('hidden', m !== 'doc');
+  $('#canvasPanel').classList.toggle('hidden', m !== 'canvas');
+  $('#settingsPanel').classList.toggle('hidden', m !== 'settings');
 
-      if (m==='doc') { try { window.ocFitDoc && window.ocFitDoc(); } catch {} }
-      if (m==='canvas') {
-        state.canvas && state.canvas.requestRenderAll();
-        if (window.innerWidth <= 1024 && !document.body.classList.contains('fs-canvas-on')) {
-          document.body.classList.add('fs-canvas-on','fs-active');
-          $('#fsToolbarExit').textContent = 'Exit';
-        }
-      }
-        // Leave fullscreen canvas when switching away (e.g., to Settings) so the panel is visible on phones
+  // Highlight the active tab in the desktop header
+  $('#modeDoc').classList.toggle('bg-white/10', m === 'doc');
+  $('#modeCanvas').classList.toggle('bg-white/10', m === 'canvas');
+  $('#modeSettings').classList.toggle('bg-white/10', m === 'settings');
+
+  // Document layout re-fit
+  if (m === 'doc') { try { window.ocFitDoc && window.ocFitDoc(); } catch {} }
+
+  // Canvas specifics (auto full-screen on small screens)
+  if (m === 'canvas') {
+    state.canvas && state.canvas.requestRenderAll();
+    if (window.innerWidth <= 1024 && !document.body.classList.contains('fs-canvas-on')) {
+      document.body.classList.add('fs-canvas-on', 'fs-active');
+      const fsBtn = document.getElementById('fsToolbarExit');
+      if (fsBtn) fsBtn.textContent = 'Exit';
+    }
+  }
+
+  // If switching AWAY from canvas (e.g., to Settings), exit canvas fullscreen so the panel is visible
   if (m !== 'canvas') {
     document.body.classList.remove('fs-canvas-on', 'fs-active');
     const fsBtn = document.getElementById('fsToolbarExit');
     if (fsBtn) fsBtn.textContent = 'Full';
   }
 
-  // Keep the mobile toggle label accurate: show where tapping it will go next
+  // Update the mobile toggle label to show the next target
   const mbModeBtn = document.getElementById('mbMode');
   if (mbModeBtn) mbModeBtn.textContent = (m === 'doc') ? 'Canvas' : 'Doc';
+}
 
-    }
 
     /* =============== SNAPSHOTS / SAVE / LOAD =============== */
     function getSnapshot() {
