@@ -51,19 +51,15 @@
   <style>
     :root {
       --bg:#0b0b0b; --text:#ededed; --muted:rgba(255,255,255,0.7);
-      --panel:rgba(255,255,255,0.06); --panel-2:rgba(255,255,255,0.10);
-      --line:rgba(255,255,255,0.14); --accent:#3B82F6;
+      --panel:rgba(255,255,255,0.06); --panel-2:rgba(255,255,255,0.04);
+      --line:rgba(255,255,255,0.12); --accent:#3B82F6;
       --shadow-paper:0 10px 30px rgba(0,0,0,0.18);
       --paper:#111214; --paper-text:#f2f2f2; --paper-edge:rgba(255,255,255,0.06);
-
-      /* New: spacing controls */
-      --toolbar-gap: 6px;
-      --mobile-side-pad: 12px; /* adjustable in Settings */
     }
     html[data-theme="light"]{
       --bg:#f5f5f7; --text:#0a0a0a; --muted:rgba(0,0,0,0.65);
       --panel:rgba(255,255,255,0.9); --panel-2:rgba(255,255,255,0.85);
-      --line:rgba(0,0,0,0.10); --accent:#0A84FF;
+      --line:rgba(0,0,0,0.08); --accent:#0A84FF;
       --paper:#ffffff; --paper-text:#0a0a0a; --paper-edge:rgba(0,0,0,0.08);
     }
     html,body{height:100%; overflow-x:hidden}
@@ -71,7 +67,6 @@
       background:var(--bg); color:var(--text);
       overscroll-behavior-x: none;
       font-family:ui-sans-serif, SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
-      -webkit-font-smoothing: antialiased;
     }
     .glass{background:var(--panel); backdrop-filter:blur(12px)}
     .glass-2{background:var(--panel-2); backdrop-filter:blur(12px)}
@@ -86,25 +81,18 @@
     ::-webkit-scrollbar{width:10px;height:10px}
     ::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px}
     ::-webkit-scrollbar-track{background:var(--panel-2)}
-    .z-topbar{z-index:70}.z-menu{z-index:75}.z-drawer{z-index:80}.z-pop{z-index:1000}
-
-    /* ✅ Make toolbars/apple-clean and overflow-safe */
-    .toolbar-scroll{ display:flex; flex-wrap:nowrap; align-items:center; gap:var(--toolbar-gap); overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; position:relative; z-index:60 }
-    .toolbar-scroll > *{ flex-shrink:0; white-space:nowrap }
-
-    /* Quill theme polish */
-    .ql-toolbar.ql-snow{border:1px solid var(--line) !important;background:var(--panel-2) !important;color:var(--text) !important}
+    .ql-toolbar.ql-snow{border:1px solid var(--line);background:var(--panel-2);color:var(--text); position:relative; z-index:60; overflow:visible}
+    .ql-toolbar .ql-picker,.ql-toolbar button{color:var(--text)}
+    .ql-snow .ql-stroke{stroke:var(--text)} .ql-snow .ql-fill{fill:var(--text)}
     .ql-container.ql-snow{border:1px solid var(--line);background:transparent;color:var(--text)}
     .ql-editor{color:var(--paper-text)}
-
-    /* Clear selection */
+    /* Clear, visible selection in both themes */
     html[data-theme="dark"] ::selection{ background: rgba(59,130,246,0.35); color: inherit }
     html[data-theme="light"] ::selection{ background: rgba(10,132,255,0.28); color: inherit }
     html[data-theme="dark"] .ql-editor ::selection{ background: rgba(59,130,246,0.35) }
     html[data-theme="light"] .ql-editor ::selection{ background: rgba(10,132,255,0.28) }
-
     #pageWrap{
-      display:flex; justify-content:center; align-items:flex-start; padding:16px; overflow-x:hidden; width:100%;
+      display:grid; place-items:center; padding:16px; overflow-x:hidden; width:100%;
       background:linear-gradient(var(--bg),var(--bg)) padding-box,
                  radial-gradient(600px 200px at 50% -50px, rgba(255,255,255,0.08), transparent) border-box;
     }
@@ -114,19 +102,14 @@
       overflow:visible; position:relative; transform-origin: top center; margin:0 auto;
     }
     #page .ql-editor{min-height:calc(1056px - 2in); padding:1in; font-size:16px; line-height:1.6}
-
     /* Title pill */
     .title-pill{ display:inline-flex; align-items:center; border-radius:9999px }
     #docTitle{ width:auto; max-width:60ch }
-
     #canvasHost{min-height:calc(100vh - 260px)}
-
     input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0}
     input[type=number]{-moz-appearance:textfield; appearance:textfield}
-
     .z-topbar{z-index:50}.z-menu{z-index:55}.z-drawer{z-index:60}
-
-    /* Active tool */
+    /* Active tool: blue/green animated glow for clear state */
     .tool-active{
       background: linear-gradient(135deg, #22d3ee 0%, #10b981 50%, #22d3ee 100%) !important;
       background-size: 200% 200%;
@@ -136,28 +119,31 @@
       border-color: rgba(255,255,255,0.25) !important;
     }
 
-    /* Minimal Quill content helpers */
+    /* Minimal Quill styles for exported HTML rendering */
     .ql-align-center{text-align:center} .ql-align-right{text-align:right} .ql-align-justify{text-align:justify}
     .ql-indent-1{margin-left:3em} .ql-indent-2{margin-left:6em} .ql-indent-3{margin-left:9em}
 
     /* Responsive layout refinements */
     @media (max-width: 1024px){
+      /* Keep fixed 8.5x11 proportions; scale via JS for fit */
       #page{ border-radius:10px }
       #page .ql-editor{ padding:24px }
       #pageWrap{ padding:12px }
-      .top-actions{ flex-wrap: wrap; justify-content:flex-end; gap:8px }
-      .mobile-bar{ display:flex !important }
+      .toolbar-scroll{ overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; position:relative; z-index:60 }
+      .toolbar-scroll::-webkit-scrollbar{ height:6px }
+      .top-actions{ flex-wrap: wrap; justify-content:flex-end }
+    .mobile-bar{ display:flex !important }
     }
     @media (max-width: 768px){
-      /* Respect user setting for mobile side padding */
-      #pageWrap{ padding-left: var(--mobile-side-pad); padding-right: var(--mobile-side-pad) }
       /* Canvas toolbar horizontal scroll on small screens */
       .canvas-toolbar{ overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; white-space:nowrap; max-width:100% }
       .canvas-toolbar > *{ flex-shrink:0 }
+      /* Fullscreen mini bar scroll */
       .canvas-fs-toolbar{ max-width: calc(100vw - 16px); overflow-x:auto; -webkit-overflow-scrolling:touch }
     }
 
-    /* Fullscreen canvas */
+    /* Print styles to render the document cleanly */
+    /* Fullscreen canvas mode (fallback + polish for iOS) */
     body.fs-canvas-on{ overflow:hidden }
     body.fs-canvas-on header,
     body.fs-canvas-on #sidebarDock,
@@ -169,11 +155,13 @@
     .canvas-fs-exit{ position:absolute; top:12px; right:12px; display:none; z-index:1001 }
     body.fs-canvas-on .canvas-fs-exit, body.fs-active .canvas-fs-exit{ display:inline-flex }
     .canvas-fs-toolbar{ position:absolute; top:calc(env(safe-area-inset-top, 0px) + 12px); left:50%; transform: translateX(-50%); display:flex; z-index:1002 }
+    /* Hide big toolbar in immersive fullscreen */
     body.fs-canvas-on .canvas-toolbar, body.fs-active .canvas-toolbar{ display:none !important }
+    /* Improve mobile interactions */
     #canvasHost canvas{ touch-action: none }
     .canvas-fs-toolbar button, .canvas-fs-toolbar input{ touch-action: manipulation }
 
-    /* Print styles */
+    /* Print styles to render the document cleanly */
     @media print{
       body, html{ background:#fff; color:#000 }
       header, #canvasPanel, #historyDrawer, .mobile-bar{ display:none !important }
@@ -182,13 +170,13 @@
       #page{ width:816px; min-height:1056px; border:none; box-shadow:none }
       #page .ql-editor{ padding:1in; color:#000 }
     }
-
     /* Safe area for notches */
     .safe-pad-bottom{ padding-bottom: env(safe-area-inset-bottom) }
 
-    /* Sidebar */
+    /* Sidebar (ChatGPT-style) */
     @media (min-width: 1024px){
       body.with-sidebar{ padding-left: 300px }
+      /* Make header span the entire viewport width despite body padding */
       body.with-sidebar header{ margin-left: -300px; width: calc(100% + 300px) }
     }
     body.sidebar-collapsed #sidebarDock{ display:none !important }
@@ -200,7 +188,7 @@
     .note-row:hover{ background-color: rgba(255,255,255,0.06) }
     .note-row.active{ outline:1px solid var(--line); background-color: rgba(255,255,255,0.08) }
 
-    /* Glowing plus */
+    /* Glowing blue/green plus (OpenCounsel-style) */
     .plus-glow{
       display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; margin-right:8px;
       border-radius:999px; color:white; font-weight:700; font-size:14px;
@@ -217,7 +205,7 @@
       100%{ background-position: 0% 50% }
     }
 
-    /* Quill font + size (labels retained) */
+    /* Quill font + size (Apple-like options) */
     .ql-snow .ql-picker.ql-font .ql-picker-label::before,
     .ql-snow .ql-picker.ql-font .ql-picker-item::before { content: attr(data-label); }
     .ql-font-system{ font-family: ui-sans-serif, SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol; }
@@ -233,16 +221,23 @@
     .ql-size-32px{ font-size:32px; }
     .ql-size-48px{ font-size:48px; }
 
-    /* Menu panel */
+    /* Menu panel polish */
     .menu-panel{ backdrop-filter: blur(12px); background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,0.35); border-radius: 12px; overflow: hidden; }
     .menu-item{ width:100%; text-align:left; padding:8px 12px; word-break:break-word }
     .menu-item:hover{ background: rgba(255,255,255,0.10); }
-
-    /* Quill picker dropdown safety */
+    /* Toolbar spacing polish */
+    .ql-toolbar .ql-formats{ margin-right:6px }
+    .ql-toolbar .ql-picker-label, .ql-toolbar button{ padding:4px 6px }
+    /* Quill picker options: keep within viewport on mobile */
     .ql-snow .ql-picker-options{ max-height:60vh; overflow:auto }
     @media (max-width: 768px){ .ql-snow .ql-picker-options{ max-width:90vw; right:0 !important; left:auto !important } }
+    /* Toolbar spacing polish */
+    .ql-toolbar .ql-formats{ margin-right:6px }
+    .ql-toolbar .ql-picker-label, .ql-toolbar button{ padding:4px 6px }
+    .canvas-fs-toolbar button{ padding:4px 8px }
+    .canvas-fs-toolbar input{ margin:0 2px }
 
-    /* Document widgets */
+    /* Document widgets (tables/invoices) */
     .doc-widget{ position:relative; border:1px solid var(--line); border-radius:12px; background:var(--panel-2); padding:8px; margin:12px 0; user-select:text; -webkit-user-select:text; max-width:100% }
     .doc-widget .drag-handle{ position:absolute; top:6px; left:6px; width:18px; height:18px; border-radius:6px; background:var(--panel); border:1px solid var(--line); display:grid; place-content:center; cursor:grab }
     .doc-widget .drag-handle::before{ content:'⋮⋮'; font-size:10px; color:var(--muted) }
@@ -250,6 +245,44 @@
     .doc-widget [contenteditable="true"]{ outline:none }
     .doc-grid{ display:grid; gap:0 }
     .doc-cell{ border:1px solid var(--line); padding:8px; min-height:28px }
+
+    /* Quill picker dropdown fixes (mobile + desktop) */
+    .ql-snow .ql-picker{ color: var(--text); }
+    .ql-snow .ql-picker-label{ padding: 6px 10px; border:none }
+    .ql-snow .ql-picker-options{ background: var(--panel-2); border:1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); padding:6px; z-index: 1000; }
+    .ql-snow .ql-picker-item{ padding: 6px 10px; border-radius: 8px }
+    .ql-snow .ql-picker-item:hover{ background: rgba(255,255,255,0.10); }
+    /* Accessible focus ring */
+    :focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+    #historyDrawer .plus-glow{ margin-right: 0 }
+
+    /* Font picker labels */
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="system"]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="system"]::before{ content:"System" }
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="serif"]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="serif"]::before{ content:"Serif" }
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="mono"]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="mono"]::before{ content:"Mono" }
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="georgia"]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="georgia"]::before{ content:"Georgia" }
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="garamond"]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="garamond"]::before{ content:"Garamond" }
+
+    /* Size picker labels */
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="12px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="12px"]::before{ content:"12" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="14px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="14px"]::before{ content:"14" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="16px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="16px"]::before{ content:"16" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="18px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="18px"]::before{ content:"18" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="24px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="24px"]::before{ content:"24" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="32px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="32px"]::before{ content:"32" }
+    .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="48px"]::before,
+    .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="48px"]::before{ content:"48" }
   </style>
 </head>
 <body class="h-full selection:bg-white/20">
@@ -272,7 +305,7 @@
             <button id="menuBtn" class="lg:hidden px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-label="Open menu">☰</button>
 
             <!-- Desktop actions only -->
-            <div class="hidden lg:flex items-center gap-2 top-actions">
+          <div class="hidden lg:flex items-center gap-2 top-actions">
               <button id="toggleSidebar" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">History</button>
               <button id="newBtn"   class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center" style="border-color:var(--line)"><span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>New</button>
               <button id="openBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Open…</button>
@@ -293,7 +326,6 @@
               <div class="ml-2 flex items-center rounded-xl glass-2 border overflow-hidden" style="border-color:var(--line)">
                 <button id="modeDoc" class="px-3 py-2 text-sm bg-white/10">Document</button>
                 <button id="modeCanvas" class="px-3 py-2 text-sm hover:bg-white/10">Canvas</button>
-                <button id="modeSettings" class="px-3 py-2 text-sm hover:bg-white/10">Settings</button>
               </div>
 
               <!-- Theme toggle -->
@@ -303,7 +335,7 @@
         </div>
       </div>
     </div>
-  </header>
+</header>
 
   <!-- ======= SIDEBAR (Desktop) ======= -->
   <aside id="sidebarDock" class="px-3">
@@ -319,8 +351,8 @@
   <!-- ======= TITLE ROW ======= -->
   <section class="max-w-[1200px] mx-auto px-4 mt-3">
     <div class="flex items-center gap-2">
-      <div class="title-pill glass-2 border px-3 py-1.5 w-full md:w-auto" style="border-color:var(--line)">
-        <input id="docTitle" class="bg-transparent outline-none text-lg md:text-xl font-semibold w-full" style="color:var(--text)" placeholder="Untitled note" />
+      <div class="title-pill glass-2 border px-3 py-1.5" style="border-color:var(--line)">
+        <input id="docTitle" class="bg-transparent outline-none text-lg md:text-xl font-semibold" style="color:var(--text)" placeholder="Untitled note" />
       </div>
       <span id="dirtyDot" class="w-2.5 h-2.5 rounded-full bg-rose-400/80 hidden" title="Unsaved changes"></span>
     </div>
@@ -330,23 +362,21 @@
   <main class="max-w-[1200px] mx-auto px-4 mt-2">
     <!-- Document Mode -->
     <div id="docPanel" class="space-y-3">
-      <!-- ✅ Ensure Quill gets proper theme classes so styling never disappears -->
-      <div id="quillToolbar" class="rounded-2xl">
-        <div class="ql-toolbar ql-snow glass border rounded-2xl toolbar-scroll" id="quillToolbarShell" style="border-color:var(--line)"></div>
-      </div>
+      <div id="quillToolbar" class="rounded-2xl toolbar-scroll"></div>
       <div id="pageWrap" class="rounded-2xl glass border" style="border-color:var(--line)">
         <div id="page"><div id="quillEditor"></div></div>
       </div>
     </div>
 
     <!-- Canvas Mode -->
-    <div id="canvasPanel" class="hidden">
+      <div id="canvasPanel" class="hidden">
+      <!-- Canvas Toolbar -->
       <div id="canvasToolDock" class="canvas-toolbar glass rounded-2xl border p-2 flex flex-wrap items-center gap-2" style="border-color:var(--line)">
         <button class="tool" data-tool="select" title="V">Move</button>
         <button class="tool" data-tool="text"   title="T">Text</button>
         <button class="tool" data-tool="sticky" title="N">Sticky</button>
         <button class="tool" data-tool="draw"   title="P">Pen</button>
-        <button class="tool" data-tool="erase"  title="⌫">Erase</button>
+        <button class="tool" data-tool="erase"  title="⌫">Delete</button>
 
         <div class="ml-2 flex items-center gap-2">
           <label class="text-sm" style="color:var(--muted)">Brush</label>
@@ -408,36 +438,6 @@
         <canvas id="ocCanvas"></canvas>
       </div>
     </div>
-
-    <!-- ======= SETTINGS ======= -->
-    <div id="settingsPanel" class="hidden space-y-3">
-      <div class="glass border rounded-2xl p-4 md:p-6" style="border-color:var(--line)">
-        <h2 class="text-xl font-semibold">Settings</h2>
-        <div class="grid md:grid-cols-2 gap-4 mt-3">
-          <div class="glass-2 border rounded-xl p-3" style="border-color:var(--line)">
-            <div class="font-medium">Mobile document side padding</div>
-            <div class="text-xs mb-3" style="color:var(--muted)">Default 12px. Affects left/right padding of the document preview on small screens.</div>
-            <div class="flex items-center gap-2">
-              <input id="setMobilePad" type="range" min="8" max="28" step="1" class="w-56" />
-              <input id="setMobilePadNumber" type="number" min="8" max="28" step="1" class="w-16 glass-2 border rounded-lg px-2 py-1 text-sm" style="border-color:var(--line)" />
-              <span class="text-sm" style="color:var(--muted)">px</span>
-            </div>
-          </div>
-          <div class="glass-2 border rounded-xl p-3" style="border-color:var(--line)">
-            <div class="font-medium">Toolbar density</div>
-            <div class="flex gap-2 mt-2">
-              <button id="densityCozy" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Cozy</button>
-              <button id="densityCompact" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Compact</button>
-            </div>
-            <div class="text-xs mt-2" style="color:var(--muted)">Compact reduces gaps for tighter horizontal toolbars.</div>
-          </div>
-        </div>
-        <div class="mt-6 flex items-center justify-end gap-2">
-          <button id="settingsBack" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Back</button>
-          <button id="settingsApply" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Apply</button>
-        </div>
-      </div>
-    </div>
   </main>
 
   <!-- ======= HISTORY DRAWER ======= -->
@@ -470,7 +470,8 @@
   <!-- Hidden file input -->
   <input id="openFile" type="file" accept=".ocnote,application/json" class="hidden" />
 
-  <!-- Offscreen export staging -->
+
+  <!-- Offscreen export staging (used by PDF if ever needed) -->
   <div id="exportStage" style="position:absolute; left:-9999px; top:0; width:816px; background:#fff; color:#000; padding:24px;"></div>
 
   <script>
@@ -505,14 +506,32 @@
       div.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl glass border text-white';
       div.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
       document.body.appendChild(div);
-      setTimeout(()=>div.remove(), 1400);
+      setTimeout(()=>div.remove(), 1300);
     }
 
+    // Robust downloader with Safari/iOS fallback for DOCX
     async function downloadBlob(blob, filename) {
+      const mime = blob.type || 'application/octet-stream';
       const a = document.createElement('a');
       const url = URL.createObjectURL(blob);
-      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      const canDownload = 'download' in a && !isSafari();
+
+      if (canDownload) {
+        a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+      } else {
+        // Safari/iOS fallback: open in a new tab so user can "Save"
+        try {
+          const data = await blobToDataURL(blob);
+          const win = window.open(data, '_blank');
+          if (!win) {
+            // if popup blocked, navigate current tab
+            location.href = data;
+          }
+        } finally {
+          setTimeout(() => URL.revokeObjectURL(url), 0);
+        }
+      }
     }
     function blobToDataURL(blob){
       return new Promise((res, rej) => {
@@ -528,7 +547,6 @@
       key: 'oc_notes_history_v4',
       themeKey: 'oc_theme',
       sidebarKey: 'oc_sidebar_open',
-      settingsKey: 'oc_settings_v1',
       loadAll() { try { return JSON.parse(localStorage.getItem(this.key)) || []; } catch { return []; } },
       saveAll(list) { localStorage.setItem(this.key, JSON.stringify(list)); },
       upsert(doc) {
@@ -540,28 +558,25 @@
       saveTheme(v){ localStorage.setItem(this.themeKey, v); },
       loadTheme(){ return localStorage.getItem(this.themeKey); },
       saveSidebarOpen(v){ localStorage.setItem(this.sidebarKey, v ? '1':'0'); },
-      loadSidebarOpen(){ return localStorage.getItem(this.sidebarKey) !== '0'; },
-      loadSettings(){ try { return Object.assign({ mobileSidePad:12, density:'cozy' }, JSON.parse(localStorage.getItem(this.settingsKey))||{}); } catch { return { mobileSidePad:12, density:'cozy' }; } },
-      saveSettings(s){ localStorage.setItem(this.settingsKey, JSON.stringify(s)); }
+      loadSidebarOpen(){ return localStorage.getItem(this.sidebarKey) !== '0'; }
     };
 
     /* =============== STATE =============== */
     const state = {
       id: uid(),
-      mode: 'doc', // 'doc' | 'canvas' | 'settings'
+      mode: 'doc', // 'doc' | 'canvas'
       dirty: false,
       quill: null,
       canvas: null,
       hist: { stack: [], idx: -1 },
       suppressHistory: false,
-      currentTool: 'select',
-      awaitingPlacement: null,
+      currentTool: 'select',     // 'select'|'text'|'sticky'|'draw'|'erase'
+      awaitingPlacement: null,   // for click-to-place when 'text' or 'sticky'
       zoom: 1,
       isSpacePanning: false,
       grid: { show:false, snap:false, size:24, targetTol:10 },
       sidebarOpen: true,
       docScale: 1,
-      settings: store.loadSettings(),
     };
     const markDirty = () => { state.dirty = true; $('#dirtyDot').classList.remove('hidden'); try { autoSave && autoSave(); } catch {} }
     const clearDirty = () => { state.dirty = false; $('#dirtyDot').classList.add('hidden'); }
@@ -572,61 +587,64 @@
       if (t === 'dark') document.documentElement.classList.add('dark');
       else document.documentElement.classList.remove('dark');
       store.saveTheme(t);
+      // update theme-color meta for nicer mobile UI
       const metaTags = document.querySelectorAll('meta[name="theme-color"]');
       metaTags.forEach(m => {
         if (t==='dark' && m.media?.includes('dark')) m.setAttribute('content', '#0b0b0b');
         if (t==='light' && m.media?.includes('light')) m.setAttribute('content', '#f5f5f7');
       });
     }
-    function toggleTheme() { applyTheme((document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark'); }
+    function toggleTheme() {
+      applyTheme((document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark');
+    }
 
     /* =============== QUILL =============== */
     function renderQuillToolbar() {
-      // keep your original layout but ensure toolbar gets Quill theme classes
-      const shell = $('#quillToolbarShell');
-      shell.innerHTML = `
-        <span class="ql-formats">
-          <select class="ql-font">
-            <option selected value="system" data-label="System">System</option>
-            <option value="serif" data-label="Serif">Serif</option>
-            <option value="mono" data-label="Mono">Mono</option>
-            <option value="georgia" data-label="Georgia">Georgia</option>
-            <option value="garamond" data-label="Garamond">Garamond</option>
-          </select>
-        </span>
-        <span class="ql-formats">
-          <select class="ql-header"><option selected></option><option value="1">H1</option><option value="2">H2</option><option value="3">H3</option></select>
-        </span>
-        <span class="ql-formats">
-          <button class="ql-bold"></button><button class="ql-italic"></button>
-          <button class="ql-underline"></button><button class="ql-strike"></button>
-        </span>
-        <span class="ql-formats">
-          <button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button>
-        </span>
-        <span class="ql-formats"><select class="ql-align"></select></span>
-        <span class="ql-formats"><button class="ql-link"></button><button class="ql-image"></button><button class="ql-code-block"></button></span>
-        <span class="ql-formats"><button class="ql-indent" value="-1"></button><button class="ql-indent" value="+1"></button></span>
-        <span class="ql-formats"><select class="ql-color"></select><select class="ql-background"></select></span>
-        <span class="ql-formats">
-          <select class="ql-size">
-            <option value="12px">12</option>
-            <option value="14px">14</option>
-            <option selected value="16px">16</option>
-            <option value="18px">18</option>
-            <option value="24px">24</option>
-            <option value="32px">32</option>
-            <option value="48px">48</option>
-          </select>
-        </span>
-        <span class="ql-formats"><button class="ql-clean"></button></span>
-        <span class="ql-formats">
-          <button id="docInsertInvoice" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Invoice</button>
-        </span>
-      `;
+      $('#quillToolbar').innerHTML = `
+        <div class="glass border rounded-2xl p-2 flex flex-wrap gap-2 items-center" style="border-color:var(--line)">
+          <span class="ql-formats">
+            <select class="ql-font">
+              <option selected value="system" data-label="System">System</option>
+              <option value="serif" data-label="Serif">Serif</option>
+              <option value="mono" data-label="Mono">Mono</option>
+              <option value="georgia" data-label="Georgia">Georgia</option>
+              <option value="garamond" data-label="Garamond">Garamond</option>
+            </select>
+          </span>
+          <span class="ql-formats">
+            <select class="ql-header"><option selected></option><option value="1">H1</option><option value="2">H2</option><option value="3">H3</option></select>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-bold"></button><button class="ql-italic"></button>
+            <button class="ql-underline"></button><button class="ql-strike"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button>
+          </span>
+          <span class="ql-formats"><select class="ql-align"></select></span>
+          <span class="ql-formats"><button class="ql-link"></button><button class="ql-image"></button><button class="ql-code-block"></button></span>
+          <span class="ql-formats"><button class="ql-indent" value="-1"></button><button class="ql-indent" value="+1"></button></span>
+          <span class="ql-formats"><select class="ql-color"></select><select class="ql-background"></select></span>
+          <span class="ql-formats">
+            <select class="ql-size">
+              <option value="12px">12</option>
+              <option value="14px">14</option>
+              <option selected value="16px">16</option>
+              <option value="18px">18</option>
+              <option value="24px">24</option>
+              <option value="32px">32</option>
+              <option value="48px">48</option>
+            </select>
+          </span>
+          <span class="ql-formats"><button class="ql-clean"></button></span>
+          <span class="ql-formats">
+            <button id="docInsertInvoice" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Invoice</button>
+          </span>
+        </div>`;
     }
     function initQuill() {
       renderQuillToolbar();
+      // Register custom font & size whitelists
       const Font = Quill.import('attributors/class/font');
       Font.whitelist = ['system','serif','mono','georgia','garamond'];
       Quill.register(Font, true);
@@ -634,11 +652,15 @@
       Size.whitelist = ['12px','14px','16px','18px','24px','32px','48px'];
       Quill.register(Size, true);
 
-      const q = new Quill('#quillEditor', { theme:'snow', modules:{ toolbar:'#quillToolbarShell' } });
+      const q = new Quill('#quillEditor', { theme:'snow', modules:{ toolbar:'#quillToolbar' } });
       state.quill = q;
       q.on('text-change', markDirty);
 
-      $('#docInsertInvoice')?.addEventListener('click', () => insertInvoiceDoc());
+      // Document-side insertions (table & invoice)
+      const btnDocInvoice = document.getElementById('docInsertInvoice');
+      if (btnDocInvoice) btnDocInvoice.addEventListener('click', () => insertInvoiceDoc());
+
+      // removed table insertion logic
 
       function insertInvoiceDoc(){
         const col = currentUIColor();
@@ -656,7 +678,7 @@
         markDirty();
       }
 
-      // Doc widgets drag/resize (unchanged)
+      // Doc widget interactions: drag to reorder; resize to change width
       (function wireDocWidgets(){
         const root = q.root;
         let dragEl = null;
@@ -699,16 +721,17 @@
         root.addEventListener('pointerup', () => { if (rs.el) { rs.el=null; markDirty(); } });
         root.addEventListener('pointercancel', () => { rs.el=null; });
 
+        // Mark dirty on edits inside widgets
         root.addEventListener('input', (e) => { if (e.target.closest('.doc-widget')) markDirty(); });
       })();
     }
 
-    /* =============== FABRIC CANVAS (fixed eraser) =============== */
+    /* =============== FABRIC CANVAS =============== */
     function initCanvas() {
       const host = $('#canvasHost');
       const cEl = $('#ocCanvas');
       const canvas = new fabric.Canvas(cEl, {
-        backgroundColor: null, // use host background so erasing never clears bg
+        backgroundColor: '#0f0f11',
         selection: true,
         preserveObjectStacking: true,
         perPixelTargetFind: true,
@@ -717,12 +740,12 @@
       state.canvas = canvas;
       try { canvas.upperCanvasEl.setAttribute('tabindex','1'); } catch {}
 
-      // History (simple)
+      // Use Fabric's native EraserBrush (available in Fabric 5+)
       const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
       function pushHistory(){
         if (!canvas || state.suppressHistory) return;
         try {
-          const snap = { json: canvas.toJSON(SAVE_PROPS), bg: $('#canvasHost').style.backgroundColor || '#0f0f11' };
+          const snap = { json: canvas.toJSON(SAVE_PROPS), bg: canvas.backgroundColor || '#0f0f11' };
           state.hist.stack = state.hist.stack.slice(0, state.hist.idx + 1);
           state.hist.stack.push(snap);
           state.hist.idx = state.hist.stack.length - 1;
@@ -736,7 +759,7 @@
         state.suppressHistory = true;
         try {
           await new Promise(res => canvas.loadFromJSON(snap.json, () => res()));
-          $('#canvasHost').style.backgroundColor = snap.bg || '#0f0f11';
+          if (snap.bg) canvas.setBackgroundColor(snap.bg, canvas.renderAll.bind(canvas));
           canvas.requestRenderAll();
         } finally {
           state.suppressHistory = false;
@@ -745,12 +768,11 @@
       async function undoCanvas(){ if (state.hist.idx > 0) { state.hist.idx--; await loadHistoryAt(state.hist.idx); } }
       async function redoCanvas(){ if (state.hist.idx < state.hist.stack.length - 1) { state.hist.idx++; await loadHistoryAt(state.hist.idx); } }
 
-      // Resize to container
       const resize = () => {
         const vv = window.visualViewport;
         const vw = (vv?.width) ? Math.round(vv.width) : (host.clientWidth || window.innerWidth || 1200);
-        const vh = (vv?.height) ? Math.round(vv.height) : window.innerHeight;
         const fsOn = document.body.classList.contains('fs-canvas-on');
+        const vh = (vv?.height) ? Math.round(vv.height) : window.innerHeight;
         const h = fsOn ? vh : Math.max(600, window.innerHeight - 260);
         cEl.width = vw; cEl.height = h;
         canvas.setWidth(vw); canvas.setHeight(h);
@@ -768,112 +790,169 @@
       canvas.freeDrawingBrush.width = 3;
       canvas.freeDrawingBrush.color = '#ffffff';
 
-      // ✅ Correct eraser behavior
-      function useTool(kind){
-        state.currentTool = kind;
-        state.awaitingPlacement = null;
-        canvas.isDrawingMode = false;
-        canvas.defaultCursor = 'default';
-        canvas.selection = (kind === 'select');
-
-        // button active visual
-        const toolBtns = $$('#canvasPanel .tool');
-        const fsToolBtns = $$('#fsToolbar [data-tool]');
-        toolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === kind));
-        fsToolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === kind));
-
-        if (kind === 'draw') {
-          canvas.isDrawingMode = true;
-          if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) {
-            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-          }
-          canvas.freeDrawingBrush.color = $('#brushColor').value || '#ffffff';
-          canvas.freeDrawingBrush.width = Number($('#brushSize').value || 3);
-          canvas.defaultCursor = 'crosshair';
-          return;
-        }
-        if (kind === 'text' || kind === 'sticky') {
-          canvas.defaultCursor = 'crosshair';
-          return;
-        }
-        if (kind === 'erase') {
-          canvas.isDrawingMode = true;
-          if (fabric.EraserBrush) {
-            canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
-            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
-          } else {
-            // Fallback: destination-out stroke
-            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
-            canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)';
-            canvas.freeDrawingBrush._finalizeAndAddPath = function () {
-              const ctx = this.canvas.contextTop, pathData = this._points;
-              const path = this._createPath(pathData);
-              path.globalCompositeOperation = 'destination-out';
-              path.fill = null; path.stroke = 'rgba(0,0,0,1)'; path.strokeUniform = true;
-              path.selectable = false; path.evented = false;
-              this.canvas.add(path); this.canvas.requestRenderAll(); this._resetShadow(); this._reset();
-            };
-          }
-          canvas.defaultCursor = 'crosshair';
-          return;
-        }
-      }
-
-      // tools init (wire buttons once)
-      const toolBtns = $$('#canvasPanel .tool');
-      const fsToolBtns = $$('#fsToolbar [data-tool]');
-      toolBtns.forEach(btn => {
-        btn.classList.add('px-3','py-1.5','glass-2','hover:bg-white/20','rounded-lg','border','text-sm');
-        btn.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
-        btn.addEventListener('click', () => useTool(btn.dataset.tool));
-      });
-      fsToolBtns.forEach(btn => btn.addEventListener('click', () => useTool(btn.dataset.tool)));
-      $('#fsUndo')?.addEventListener('click', undoCanvas);
-      $('#fsRedo')?.addEventListener('click', redoCanvas);
-
-      useTool('select');
-
-      // Draw/erase results
+      // Make paths draggable from stroke area; better UX
       canvas.on('path:created', (e) => {
         const p = e.path;
-        if (state.currentTool === 'erase') {
-          // Keep the eraser path (so changes stick) but make it non-interactive
-          p.selectable = false; p.evented = false; p.strokeUniform = true;
-          markDirty(); pushHistoryDebounced();
+        const isErase = (state.currentTool === 'erase');
+        if (!isErase) {
+          p.set({
+            selectable:true, evented:true, hasControls:true, hasBorders:true,
+            hoverCursor:'move', fill:null, strokeUniform:true, erasable:true
+          });
+          p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
+        } else {
+          // In erase mode, do not keep any free-draw path on canvas
+          try { canvas.remove(p); } catch {}
           return;
         }
-        p.set({
-          selectable:true, evented:true, hasControls:true, hasBorders:true,
-          hoverCursor:'move', fill:null, strokeUniform:true, erasable:true
-        });
-        p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
         markDirty(); pushHistoryDebounced();
       });
 
-      // Text + Sticky placement
+      // ===== Interaction rules by tool =====
+      // 1) Text tool: click empty -> create textbox; click textbox/sticky -> edit; drawings are ignored (no move)
+      // 2) Move tool: drag anything; no typing; textboxes only enter edit on double-click (Fabric default)
+
       canvas.on('mouse:down', (opt) => {
+        try { if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } catch {}
         const target = opt.target;
         const pt = canvas.getPointer(opt.e);
 
+        // Space-pan start
+        if (state.isSpacePanning) {
+          canvas.isDragging = true;
+          canvas.selection = false;
+          canvas.lastPosX = opt.e.clientX;
+          canvas.lastPosY = opt.e.clientY;
+          return;
+        }
+
+        // Touch-friendly quick edit when in Move tool: single tap edits text
+        if (state.currentTool === 'select' && target && (target.type === 'textbox' || target.type === 'i-text')) {
+          const isTouch = !!(opt.e && (opt.e.touches || opt.e.pointerType === 'touch'));
+          if (isTouch) {
+            if (!target.isEditing) {
+              canvas.setActiveObject(target);
+              target.enterEditing();
+              if (target.hiddenTextarea) { try { target.hiddenTextarea.focus(); } catch {} }
+              setTimeout(()=>{ try { target.hiddenTextarea && target.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
+              return;
+            }
+          }
+        }
+
+        // If Text tool is active:
         if (state.currentTool === 'text') {
+          // Clicked on existing textbox? enter edit
           if (target && target.type === 'textbox') {
-            if (!target.isEditing) { canvas.setActiveObject(target); target.enterEditing(); target.hiddenTextarea?.focus(); }
+            if (!target.isEditing) {
+              canvas.setActiveObject(target);
+              target.enterEditing();
+              target.hiddenTextarea && target.hiddenTextarea.focus();
+              // Put caret at end for natural typing
+              const len = target.text?.length ?? 0;
+              target.setSelectionStart(len);
+              target.setSelectionEnd(len);
+            }
             return;
           }
-          const tb = new fabric.Textbox('', { left: pt.x, top: pt.y, width: 320, fontSize: 20, editable: true,
-            fill: $('#brushColor').value || '#ffffff', backgroundColor: 'rgba(255,255,255,0.04)', padding: 8, cornerStyle:'circle', erasable: true });
-          canvas.add(tb); canvas.setActiveObject(tb); tb.enterEditing(); tb.hiddenTextarea?.focus(); canvas.requestRenderAll(); markDirty(); pushHistoryDebounced(); return;
+          // Clicked on sticky? (we model sticky as textbox with backgroundColor)
+          if (target && target.type !== 'textbox') {
+            // ignore moves while in text mode
+            return;
+          }
+          // Empty space: create new textbox for typing
+          const tb = new fabric.Textbox('',
+            { left: pt.x, top: pt.y, width: 320, fontSize: 20, editable: true,
+              fill: $('#brushColor').value || '#ffffff',
+              backgroundColor: 'rgba(255,255,255,0.04)', padding: 8, cornerStyle:'circle',
+              erasable: true
+            });
+          canvas.add(tb);
+          canvas.setActiveObject(tb);
+          tb.enterEditing();
+          if (tb.hiddenTextarea) { try { tb.hiddenTextarea.focus(); } catch {} }
+          setTimeout(()=>{ try { tb.hiddenTextarea && tb.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
+          canvas.requestRenderAll();
+          markDirty(); pushHistoryDebounced();
+          return;
         }
 
+        // If Sticky tool: place sticky, then auto-switch to Text tool and edit immediately
         if (state.currentTool === 'sticky') {
-          const sticky = new fabric.Textbox('', { left: pt.x, top: pt.y, width: 260, fontSize: 18, editable: true,
-            fill:'#1f2937', backgroundColor: '#facc15', padding: 10, rx: 12, ry: 12, cornerStyle:'circle', erasable: true });
-          canvas.add(sticky); canvas.setActiveObject(sticky); useTool('text'); sticky.enterEditing(); sticky.hiddenTextarea?.focus(); canvas.requestRenderAll(); markDirty(); pushHistoryDebounced(); return;
+          const sticky = new fabric.Textbox('',
+            { left: pt.x, top: pt.y, width: 260, fontSize: 18, editable: true,
+              fill:'#1f2937', backgroundColor: '#facc15', padding: 10, rx: 12, ry: 12, cornerStyle:'circle',
+              erasable: true
+            });
+          canvas.add(sticky);
+          canvas.setActiveObject(sticky);
+          // Switch to text tool and start editing
+          useTool('text');
+          sticky.enterEditing();
+          if (sticky.hiddenTextarea) { try { sticky.hiddenTextarea.focus(); } catch {} }
+          setTimeout(()=>{ try { sticky.hiddenTextarea && sticky.hiddenTextarea.focus({ preventScroll:true }); } catch {} }, 0);
+          canvas.requestRenderAll();
+          markDirty(); pushHistoryDebounced();
+          return;
         }
+
+        // If Move tool: default Fabric behavior (drag/move); do not enter edit here
+        // If Draw tool: Fabric handles drawing
       });
 
-      // Wheel zoom
+      // prevent entering edit while in Move tool (single-click)
+      canvas.on('text:changed', () => { markDirty(); pushHistoryDebounced(); });
+
+      // Space-pan move/end
+      canvas.on('mouse:move', (opt) => {
+        if (canvas.isDragging) {
+          const v = canvas.viewportTransform;
+          v[4] += opt.e.clientX - canvas.lastPosX;
+          v[5] += opt.e.clientY - canvas.lastPosY;
+          canvas.requestRenderAll();
+          canvas.lastPosX = opt.e.clientX; canvas.lastPosY = opt.e.clientY;
+        }
+      });
+      canvas.on('mouse:up', () => {
+        canvas.isDragging = false;
+        canvas.selection = (state.currentTool === 'select');
+      });
+
+      // snap-to-grid
+      function maybeSnap(target) {
+        if (!state.grid.snap) return;
+        const gs = state.grid.size;
+        target.set({
+          left: Math.round(target.left / gs) * gs,
+          top:  Math.round(target.top  / gs) * gs
+        });
+      }
+      canvas.on('object:moving', (e) => { maybeSnap(e.target); });
+      canvas.on('object:scaling', (e) => { maybeSnap(e.target); });
+
+      // grid overlay
+      canvas.on('after:render', () => {
+        if (!state.grid.show) return;
+        const ctx = canvas.getContext();
+        const vpt = canvas.viewportTransform;
+        const zoom = canvas.getZoom();
+        const gs = state.grid.size * zoom;
+        const xStart = -vpt[4] % gs;
+        const yStart = -vpt[5] % gs;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+        for (let x = xStart; x < canvas.getWidth(); x += gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.getHeight()); ctx.stroke(); }
+        for (let y = yStart; y < canvas.getHeight(); y += gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.getWidth(),y); ctx.stroke(); }
+        ctx.restore();
+      });
+
+      // If Fabric eraser emits events, capture them to history
+      try {
+        canvas.on('erasing:end', () => { markDirty(); pushHistoryDebounced(); });
+      } catch {}
+
+      // wheel zoom
       canvas.on('mouse:wheel', (opt) => {
         const delta = opt.e.deltaY;
         let zoom = state.zoom * (delta > 0 ? 0.95 : 1.05);
@@ -885,29 +964,111 @@
         opt.e.preventDefault(); opt.e.stopPropagation();
       });
 
-      // Space pan
+      // keybinds
       function isEditingCanvasText(){
         try{
           const obj = canvas.getActiveObject && canvas.getActiveObject();
           return !!(obj && (obj.isEditing === true || obj.isEditing));
         } catch { return false; }
       }
-      window.addEventListener('keydown', (e) => {
-        if (state.mode !== 'canvas') return;
-        if (isEditingCanvasText()) return;
-        const isMeta = e.ctrlKey || e.metaKey;
-        if (isMeta && e.key.toLowerCase() === 'z') { e.preventDefault(); return e.shiftKey ? redoCanvas() : undoCanvas(); }
-        if (e.code === 'Space' && !state.isSpacePanning) { state.isSpacePanning = true; canvas.isDragging = true; canvas.selection = false; canvas.lastPosX = 0; canvas.lastPosY = 0; }
-      });
-      window.addEventListener('keyup', (e) => {
-        if (e.code === 'Space') { state.isSpacePanning = false; canvas.isDragging = false; canvas.selection = (state.currentTool === 'select'); }
-      });
-      canvas.on('mouse:move', (opt) => {
-        if (canvas.isDragging) {
-          const v = canvas.viewportTransform;
-          if (v) { v[4] += opt.e.movementX; v[5] += opt.e.movementY; canvas.requestRenderAll(); }
+      // allow double click to edit in any tool
+      canvas.on('mouse:dblclick', (opt) => {
+        const t = opt.target;
+        if (t && (t.type === 'textbox' || t.type === 'i-text')) {
+          canvas.setActiveObject(t);
+          t.enterEditing();
+          t.hiddenTextarea && t.hiddenTextarea.focus();
         }
       });
+      window.addEventListener('keydown', (e) => {
+        if (state.mode !== 'canvas') return;
+        if (isEditingCanvasText()) return; // don't hijack typing while editing text/sticky
+        const isMeta = e.ctrlKey || e.metaKey;
+        if (isMeta && e.key.toLowerCase() === 'z') { e.preventDefault(); return e.shiftKey ? redoCanvas() : undoCanvas(); }
+        const k = e.key.toLowerCase();
+        if (k === 'v') useTool('select');
+        if (k === 'p') useTool('draw');
+        if (k === 't') useTool('text');
+        if (k === 'n') useTool('sticky');
+        if (e.code === 'Space' && !state.isSpacePanning) {
+          state.isSpacePanning = true; canvas.defaultCursor = 'grab'; canvas.selection = false;
+        }
+        if ((e.key === 'Delete' || e.key === 'Backspace')) {
+          const active = canvas.getActiveObjects();
+          if (active.length) {
+            active.forEach(o => canvas.remove(o));
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+            markDirty(); pushHistoryDebounced();
+          }
+        }
+      });
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'Space') {
+          state.isSpacePanning = false;
+          canvas.defaultCursor = (state.currentTool === 'draw') ? 'crosshair' : 'default';
+          canvas.selection = (state.currentTool === 'select');
+        }
+      });
+
+      // mark dirty on object changes
+      canvas.on('object:added', () => { markDirty(); pushHistoryDebounced(); });
+      canvas.on('object:modified', () => { markDirty(); pushHistoryDebounced(); });
+      canvas.on('object:removed', () => { markDirty(); pushHistoryDebounced(); });
+
+      // Tool buttons + active styles
+      const toolBtns = $$('#canvasPanel .tool');
+      const fsToolBtns = $$('#fsToolbar [data-tool]');
+      toolBtns.forEach(btn => {
+        btn.classList.add('px-3','py-1.5','glass-2','hover:bg-white/20','rounded-lg','border','text-sm');
+        btn.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
+        btn.addEventListener('click', () => useTool(btn.dataset.tool));
+      });
+      const setToolActive = (tool) => {
+        toolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === tool));
+        fsToolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === tool));
+      };
+      fsToolBtns.forEach(btn => btn.addEventListener('click', () => useTool(btn.dataset.tool)));
+      const fsUndo = document.getElementById('fsUndo');
+      if (fsUndo) fsUndo.addEventListener('click', undoCanvas);
+      const fsRedo = document.getElementById('fsRedo');
+      if (fsRedo) fsRedo.addEventListener('click', redoCanvas);
+      const fsInsertInvoice = document.getElementById('fsInsertInvoice');
+      if (fsInsertInvoice) fsInsertInvoice.addEventListener('click', () => insertInvoice());
+
+      // removed canvas table insertion
+
+      function insertInvoice(){
+        const items = [];
+        const cx = canvas.getWidth()/2; let y = Math.max(40, canvas.getHeight()*0.1);
+        const mkText = (txt, opts={}) => new fabric.Textbox(txt, Object.assign({ left: cx-200, top: y, width: 400, fontSize: 20, fill: '#ffffff', textAlign:'center', erasable:true }, opts));
+        const title = mkText('INVOICE', { fontSize: 28, fontWeight: '700' }); y += 40;
+        const from = new fabric.Textbox('From:\\nYour Company\\nAddress', { left: cx-360, top: y, width: 240, fontSize: 14, fill:'#ffffff', erasable:true });
+        const to   = new fabric.Textbox('Bill To:\\nClient Name\\nAddress', { left: cx+120, top: y, width: 240, fontSize: 14, fill:'#ffffff', erasable:true }); y += 90;
+        items.push(title, from, to);
+        const headers = ['Item','Qty','Price','Amount'];
+        const cols = headers.length; const rows = 5; const cellW = 140; const cellH = 34; const startX = cx - (cols*cellW)/2; const startY = y;
+        for (let i=0;i<=rows;i++){
+          const ly = startY + i*cellH; items.push(new fabric.Line([startX, ly, startX + cols*cellW, ly], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+        }
+        for (let c=0;c<=cols;c++){
+          const lx = startX + c*cellW; items.push(new fabric.Line([lx, startY, lx, startY + rows*cellH], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+        }
+        headers.forEach((h,i)=>{ items.push(new fabric.Textbox(h, { left: startX + i*cellW + 6, top: startY + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', fontWeight:'600', erasable:true })); });
+        for (let r=1; r<rows; r++){
+          for (let c=0; c<cols; c++){
+            items.push(new fabric.Textbox('', { left: startX + c*cellW + 6, top: startY + r*cellH + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', erasable:true }));
+          }
+        }
+        y = startY + rows*cellH + 20;
+        const notes = new fabric.Textbox('Notes', { left: startX, top: y, width: cellW*2, fontSize: 14, fill:'#ffffff', erasable:true });
+        const totalLbl = new fabric.Textbox('Total:', { left: startX + cellW*2 + 20, top: y, width: cellW-20, fontSize: 16, fill:'#ffffff', textAlign:'right', erasable:true });
+        const totalVal = new fabric.Textbox('$0.00', { left: startX + cellW*3 + 6, top: y, width: cellW-12, fontSize: 16, fill:'#ffffff', erasable:true });
+        items.push(notes, totalLbl, totalVal);
+        const grp = new fabric.Group(items, { left: 0, top: 0, subTargetCheck: true, objectCaching: false, erasable:true });
+        canvas.add(grp);
+        canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
+      }
 
       // Controls
       $('#brushSize').addEventListener('input', (e) => {
@@ -922,20 +1083,17 @@
       });
       function applyBrushColor(col){
         try {
-          if (state.currentTool === 'erase') return;
+          if (state.currentTool === 'erase') return; // don't ink the eraser
           if (canvas.freeDrawingBrush && canvas.freeDrawingBrush.color !== undefined) canvas.freeDrawingBrush.color = col;
         } catch {}
       }
       $('#brushColor').addEventListener('input', (e) => {
         const col = e.target.value || '#ffffff';
+        // always update pen color for next/active drawing
         applyBrushColor(col);
         const active = canvas.getActiveObjects();
         if (active.length) {
-          active.forEach(o => {
-            if (o.type === 'path') o.set({ stroke: col });
-            else if (/text/.test(o.type)) o.set({ fill: col });
-            else if (o.type === 'group' && o._objects) o._objects.forEach(ch => { if (/text/.test(ch.type)) ch.set({ fill: col }); });
-          });
+          active.forEach(o => applyColor(o, col));
           canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
         }
         const fsColor = document.getElementById('fsColor'); if (fsColor) fsColor.value = col;
@@ -945,11 +1103,13 @@
         try { fsColor.value = document.getElementById('brushColor').value || '#ffffff'; } catch {}
         const onFsColor = (e) => {
           const col = e.target.value || '#ffffff';
+          // sync main color
           const bc = document.getElementById('brushColor'); if (bc) bc.value = col;
+          // apply like main handler
           applyBrushColor(col);
           const active = canvas.getActiveObjects();
           if (active.length) {
-            active.forEach(o => { if (o.type === 'path') o.set({ stroke: col }); else if (/text/.test(o.type)) o.set({ fill: col }); });
+            active.forEach(o => applyColor(o, col));
             canvas.requestRenderAll(); markDirty();
           }
         };
@@ -970,11 +1130,16 @@
           }
         });
       }
-
+      function applyColor(obj, col){
+        if (obj.type === 'path') obj.set({ stroke: col });
+        else if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') obj.set({ fill: col });
+        else if (obj.type === 'group' && obj._objects) obj._objects.forEach(ch => applyColor(ch, col));
+        else obj.set({ fill: col });
+      }
       $('#clearCanvas').addEventListener('click', () => {
         if (confirm('Clear the canvas?')) {
           canvas.clear();
-          $('#canvasHost').style.backgroundColor = $('#canvasBg').value || '#0f0f11';
+          canvas.setBackgroundColor($('#canvasBg').value || '#0f0f11', canvas.renderAll.bind(canvas));
           markDirty();
         }
       });
@@ -982,44 +1147,141 @@
       $('#zoomOut').addEventListener('click', () => setZoom(state.zoom / 1.15));
       $('#centerCanvas').addEventListener('click', resetViewport);
       $('#zoomLevel').addEventListener('change', (e) => setZoom(clamp((Number(e.target.value)||100)/100, 0.1, 5)));
+      
+      // Fullscreen toggle
+      function isFullscreen(){ return document.body.classList.contains('fs-canvas-on'); }
+      function enterFS(){
+        try { setMode && setMode('canvas'); } catch {}
+        document.body.classList.add('fs-canvas-on');
+        document.body.classList.add('fs-active');
+        const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Exit';
+        resize();
+      }
+      function exitFS(){
+        document.body.classList.remove('fs-canvas-on');
+        document.body.classList.remove('fs-active');
+        const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Full';
+        resize();
+      }
+      function toggleFS(){ isFullscreen() ? exitFS() : enterFS(); }
+      const fsToolbarExit = document.getElementById('fsToolbarExit');
+      if (fsToolbarExit) fsToolbarExit.addEventListener('click', toggleFS);
+      window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isFullscreen()) { e.preventDefault(); exitFS(); } });
       function setZoom(z){ state.zoom = clamp(z, 0.1, 5); const c = new fabric.Point(canvas.getWidth()/2, canvas.getHeight()/2); canvas.zoomToPoint(c, state.zoom); $('#zoomLevel').value = Math.round(state.zoom*100); }
       function resetViewport(){ state.zoom = 1; canvas.setViewportTransform([1,0,0,1,0,0]); $('#zoomLevel').value = 100; canvas.requestRenderAll(); }
 
-      // Fullscreen toggle (unchanged)
-      function isFullscreen(){ return document.body.classList.contains('fs-canvas-on'); }
-      function enterFS(){ try { setMode && setMode('canvas'); } catch {} document.body.classList.add('fs-canvas-on','fs-active'); $('#fsToolbarExit').textContent='Exit'; resize(); }
-      function exitFS(){ document.body.classList.remove('fs-canvas-on','fs-active'); $('#fsToolbarExit').textContent='Full'; resize(); }
-      function toggleFS(){ isFullscreen() ? exitFS() : enterFS(); }
-      $('#fsToolbarExit')?.addEventListener('click', toggleFS);
-      window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isFullscreen()) { e.preventDefault(); exitFS(); } });
+      // Touch: pinch-zoom and two-finger pan for mobile
+      (function enablePinchZoom(){
+        const target = canvas.upperCanvasEl;
+        let t1=null, t2=null, lastDist=0, lastCenter=null;
+        const dist = (a,b)=> Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+        const center = (a,b)=> ({ x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2 });
+        const toPoint = (c)=> new fabric.Point(c.x, c.y);
+        target.addEventListener('touchstart', (e)=>{
+          if (e.touches.length===2){
+            t1 = e.touches[0]; t2 = e.touches[1];
+            lastDist = dist(t1,t2); lastCenter = center(t1,t2);
+            canvas.isDrawingMode = false; canvas.selection = false;
+          }
+        }, { passive:false });
+        target.addEventListener('touchmove', (e)=>{
+          if (e.touches.length===2){
+            e.preventDefault();
+            t1 = e.touches[0]; t2 = e.touches[1];
+            const d = dist(t1,t2);
+            const c = center(t1,t2);
+            const scale = d / (lastDist || d);
+            const newZoom = clamp(canvas.getZoom()*scale, 0.1, 5);
+            canvas.zoomToPoint(toPoint(c), newZoom);
+            const v = canvas.viewportTransform; v[4] += (c.x - (lastCenter?.x||c.x)); v[5] += (c.y - (lastCenter?.y||c.y));
+            canvas.requestRenderAll();
+            lastDist = d; lastCenter = c; state.zoom = newZoom; $('#zoomLevel').value = Math.round(state.zoom*100);
+          }
+        }, { passive:false });
+        target.addEventListener('touchend', ()=>{ t1=t2=null; lastDist=0; lastCenter=null; canvas.selection = (state.currentTool==='select'); }, { passive:true });
+      })();
 
       // Grid & BG
       $('#gridToggle').addEventListener('change', (e) => { state.grid.show = e.target.checked; canvas.requestRenderAll(); });
       $('#snapToggle').addEventListener('change', (e) => { state.grid.snap = e.target.checked; });
       $('#gridSize').addEventListener('change', (e) => { state.grid.size = clamp(Number(e.target.value)||24, 4, 200); canvas.requestRenderAll(); });
-      $('#canvasBg').addEventListener('input', (e) => { $('#canvasHost').style.backgroundColor = e.target.value || '#0f0f11'; markDirty(); pushHistoryDebounced(); });
+      $('#canvasBg').addEventListener('input', (e) => {
+        canvas.setBackgroundColor(e.target.value || '#0f0f11', canvas.renderAll.bind(canvas)); markDirty(); pushHistoryDebounced();
+      });
 
-      // Start history
+      function useTool(kind){
+        state.currentTool = kind;
+        state.awaitingPlacement = null;
+        canvas.isDrawingMode = false;
+        canvas.defaultCursor = 'default';
+        // selection enabled only in Move tool
+        canvas.selection = (kind === 'select');
+
+        setToolActive(kind);
+
+        if (kind === 'select') { /* Move mode */ return; }
+
+        if (kind === 'draw') {
+          canvas.isDrawingMode = true;
+          // ensure normal pencil brush
+          if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) {
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          }
+          canvas.freeDrawingBrush.color = $('#brushColor').value || '#ffffff';
+          canvas.freeDrawingBrush.width = Number($('#brushSize').value || 3);
+          canvas.defaultCursor = 'crosshair';
+          return;
+        }
+
+        if (kind === 'text') {
+          // text mode uses click to place/edit; show crosshair
+          canvas.defaultCursor = 'crosshair';
+          return;
+        }
+
+        if (kind === 'sticky') {
+          // placement handled on next click; show crosshair
+          canvas.defaultCursor = 'crosshair';
+          return;
+        }
+
+        if (kind === 'erase') {
+          // Eraser uses native EraserBrush (Fabric 5+)
+          canvas.isDrawingMode = true;
+          try { canvas.freeDrawingBrush = new fabric.EraserBrush(canvas); } catch { canvas.freeDrawingBrush = new fabric.PencilBrush(canvas); }
+          canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
+          canvas.defaultCursor = 'crosshair';
+          return;
+        }
+      }
+
+      // start in Move mode
+      useTool('select');
       pushHistory();
     }
 
     /* =============== MODE TOGGLE =============== */
     function setMode(m) {
       state.mode = m;
-      $('#docPanel').classList.toggle('hidden', m!=='doc');
-      $('#canvasPanel').classList.toggle('hidden', m!=='canvas');
-      $('#settingsPanel').classList.toggle('hidden', m!=='settings');
-
-      $('#modeDoc').classList.toggle('bg-white/10', m==='doc');
-      $('#modeCanvas').classList.toggle('bg-white/10', m==='canvas');
-      $('#modeSettings').classList.toggle('bg-white/10', m==='settings');
-
-      if (m==='doc') { try { window.ocFitDoc && window.ocFitDoc(); } catch {} }
-      if (m==='canvas') {
+      if (m==='doc') {
+        $('#docPanel').classList.remove('hidden');
+        $('#canvasPanel').classList.add('hidden');
+        $('#modeDoc').classList.add('bg-white/10');
+        $('#modeCanvas').classList.remove('bg-white/10');
+        const mb = document.getElementById('mbMode'); if (mb) mb.textContent = 'Doc';
+        try { window.ocFitDoc && window.ocFitDoc(); } catch {}
+      } else {
+        $('#docPanel').classList.add('hidden');
+        $('#canvasPanel').classList.remove('hidden');
+        $('#modeCanvas').classList.add('bg-white/10');
+        $('#modeDoc').classList.remove('bg-white/10');
         state.canvas && state.canvas.requestRenderAll();
+        const mb = document.getElementById('mbMode'); if (mb) mb.textContent = 'Canvas';
+        // On small screens, present immersive canvas automatically
         if (window.innerWidth <= 1024 && !document.body.classList.contains('fs-canvas-on')) {
-          document.body.classList.add('fs-canvas-on','fs-active');
-          $('#fsToolbarExit').textContent = 'Exit';
+          document.body.classList.add('fs-canvas-on');
+          document.body.classList.add('fs-active');
+          const fsTB = document.getElementById('fsToolbarExit'); if (fsTB) fsTB.textContent = 'Exit';
         }
       }
     }
@@ -1028,12 +1290,13 @@
     function getSnapshot() {
       const title = ($('#docTitle').value || '').trim() || 'Untitled note';
       const docHTML = state.quill ? state.quill.root.innerHTML : '';
-      let canvasJSON = null, canvasPNG = null, canvasBG = $('#canvasHost').style.backgroundColor || '#0f0f11';
+      let canvasJSON = null, canvasPNG = null, canvasBG = '#0f0f11';
       if (state.canvas) {
-        canvasJSON = state.canvas.toJSON(['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation']);
+        canvasJSON = state.canvas.toJSON(['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform']);
         try { canvasPNG = state.canvas.toDataURL({ format:'png', multiplier: 2, quality: 1.0 }); } catch { canvasPNG = null; }
+        canvasBG = state.canvas.backgroundColor || '#0f0f11';
       }
-      return { id: state.id, title, updatedAt: nowISO(), docHTML, canvasJSON, canvasPNG, canvasBG, version: 6 };
+      return { id: state.id, title, updatedAt: nowISO(), docHTML, canvasJSON, canvasPNG, canvasBG, version: 5 };
     }
     function applySnapshot(snap) {
       state.id = snap.id || uid();
@@ -1042,11 +1305,12 @@
       if (state.canvas && snap.canvasJSON) {
         state.suppressHistory = true;
         state.canvas.loadFromJSON(snap.canvasJSON, () => {
-          $('#canvasHost').style.backgroundColor = snap.canvasBG || '#0f0f11';
+          if (snap.canvasBG) state.canvas.setBackgroundColor(snap.canvasBG, state.canvas.renderAll.bind(state.canvas));
           state.canvas.requestRenderAll();
+          // reset history to this state
           try {
             const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
-            const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: $('#canvasHost').style.backgroundColor || '#0f0f11' };
+            const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: state.canvas.backgroundColor || '#0f0f11' };
             state.hist.stack = [initial]; state.hist.idx = 0;
           } catch {}
           state.suppressHistory = false;
@@ -1059,23 +1323,30 @@
       if (state.dirty && !confirm('Discard unsaved changes?')) return;
       state.id = uid();
       $('#docTitle').value = 'Untitled note';
-      state.quill?.root && (state.quill.root.innerHTML = '');
+      state.quill.root.innerHTML = '';
       if (state.canvas) {
         state.canvas.clear();
-        $('#canvasHost').style.backgroundColor = $('#canvasBg').value || '#0f0f11';
+        const bg = $('#canvasBg').value || '#0f0f11';
+        state.canvas.setBackgroundColor(bg, state.canvas.renderAll.bind(state.canvas));
+        // reset canvas history
         try {
           const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
-          const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: $('#canvasHost').style.backgroundColor || '#0f0f11' };
+          const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: state.canvas.backgroundColor || bg };
           state.hist.stack = [initial]; state.hist.idx = 0;
         } catch {}
       }
       clearDirty();
-      const snap = getSnapshot(); store.upsert(snap);
-      refreshHistoryUI(); refreshSidebarUI();
+      // Immediately create placeholder entry so it appears in history/sidebar
+      const snap = getSnapshot();
+      store.upsert(snap);
+      refreshHistoryUI();
+      refreshSidebarUI();
     }
-    function saveDocument() { store.upsert(getSnapshot()); clearDirty(); flash('Saved'); refreshHistoryUI(); refreshSidebarUI(); }
+    function saveDocument() {
+      const snap = getSnapshot();
+      store.upsert(snap); clearDirty(); flash('Saved'); refreshHistoryUI(); refreshSidebarUI();
+    }
     const autoSave = debounce(() => { if (state.dirty) saveDocument(); }, 1500);
-
     function openFromChooser(){ $('#openFile').click(); }
     function importProject(file) {
       const reader = new FileReader();
@@ -1113,23 +1384,30 @@
       try {
         const snap = getSnapshot();
         const html = buildStandaloneHTML(snap);
+
+        // html-docx-js returns a Blob already; set explicit MIME just in case
         let blob = window.htmlDocx.asBlob(html, {
           orientation: 'portrait',
-          margins: { top: 720, right: 720, bottom: 720, left: 720 }
+          margins: { top: 720, right: 720, bottom: 720, left: 720 } // 0.5" margins in twips
         });
+
+        // Some browsers produce a blob without type; fix it
         if (!blob.type || blob.type === 'application/octet-stream') {
           blob = new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
         }
+
         await downloadBlob(blob, safeFileName(snap.title)+'.docx');
         flash('Exported .docx');
       } catch (err) {
         console.error('DOCX export failed', err);
-        alert('DOCX export failed. Error: ' + (err?.message || err));
+        alert('DOCX export failed. Try disabling content blockers or using a modern browser. Error: ' + (err?.message || err));
       }
     }
+
     async function exportPDF() {
       const snap = getSnapshot();
       const html = buildStandaloneHTML(snap);
+
       await html2pdf().set({
         margin: [10,10,10,10],
         filename: safeFileName(snap.title)+'.pdf',
@@ -1137,8 +1415,10 @@
         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
         jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
       }).from(html).save();
+
       flash('Exported .pdf');
     }
+
     function exportHTML() {
       const snap = getSnapshot();
       const html = buildStandaloneHTML(snap);
@@ -1146,6 +1426,7 @@
       downloadBlob(blob, safeFileName(snap.title)+'.html');
       flash('Exported .html');
     }
+
     function exportJSON() {
       const snap = getSnapshot();
       const blob = new Blob([JSON.stringify(snap,null,2)], {type:'application/json'});
@@ -1167,11 +1448,11 @@
             row.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
             row.innerHTML = `
               <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="font-medium truncate" style="color:var(--text)">${escapeHtml(item.title||'Untitled')}</div>
+                <div>
+                  <div class="font-medium" style="color:var(--text)">${escapeHtml(item.title||'Untitled')}</div>
                   <div class="text-xs" style="color:var(--muted)">${niceDate(item.updatedAt)}</div>
                 </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
+                <div class="flex items-center gap-2">
                   <button class="px-2 py-1 glass-2 hover:bg-white/20 rounded-lg text-xs border" data-open-id="${item.id}" style="border-color:var(--line)">Open</button>
                   <button class="px-2 py-1 glass-2 hover:bg-white/20 rounded-lg text-xs border" data-download-id="${item.id}" style="border-color:var(--line)">Export .ocnote</button>
                 </div>
@@ -1218,9 +1499,10 @@
     function wireMenus() {
       const expBtn = $('#exportBtn'), expMenu = $('#exportMenu');
       const closeMenus = () => { expMenu.classList.add('hidden'); expBtn.setAttribute('aria-expanded','false'); };
-      expBtn.addEventListener('click', (e) => { e.stopPropagation(); const hidden = expMenu.classList.toggle('hidden'); expBtn.setAttribute('aria-expanded', (!hidden).toString()); });
+      expBtn.addEventListener('click', (e) => { e.stopPropagation(); const open = expMenu.classList.toggle('hidden'); expBtn.setAttribute('aria-expanded', (!open).toString()); });
       document.addEventListener('click', (e) => { if (!expBtn.contains(e.target) && !expMenu.contains(e.target)) closeMenus(); });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+
       expMenu.querySelectorAll('[data-export]').forEach(btn => btn.addEventListener('click', () => {
         closeMenus();
         const k = btn.getAttribute('data-export');
@@ -1230,15 +1512,15 @@
         if (k==='json') exportJSON();
       }));
 
-      // History open/close
+      // History close
       $$('#historyDrawer [data-close-history]').forEach(el => el.addEventListener('click', closeHistory));
-      const menuBtn = document.getElementById('menuBtn'); if (menuBtn) menuBtn.addEventListener('click', openHistory);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHistory(); });
 
       // Sidebar & Drawer new button
       const sbNew = document.getElementById('sbNew'); if (sbNew) sbNew.addEventListener('click', newDocument);
       const drawerNew = document.getElementById('drawerNew'); if (drawerNew) drawerNew.addEventListener('click', newDocument);
 
-      // Drawer export quick actions
+      // Drawer export buttons
       $$('#historyDrawer [data-drawer-export]').forEach(btn => btn.addEventListener('click', () => {
         const k = btn.getAttribute('data-drawer-export');
         if (k==='docx') exportDocx();
@@ -1255,59 +1537,52 @@
       });
     }
 
-    /* =============== SETTINGS =============== */
-    function applySettingsToUI(){
-      document.documentElement.style.setProperty('--mobile-side-pad', (state.settings.mobileSidePad||12) + 'px');
-      document.documentElement.style.setProperty('--toolbar-gap', state.settings.density==='compact' ? '4px' : '6px');
-    }
-    function wireSettings(){
-      const range = $('#setMobilePad'), num = $('#setMobilePadNumber');
-      range.value = String(state.settings.mobileSidePad||12);
-      num.value = String(state.settings.mobileSidePad||12);
-      range.addEventListener('input', ()=>{ num.value=range.value; state.settings.mobileSidePad=Number(range.value); applySettingsToUI(); try{ window.ocFitDoc && window.ocFitDoc(); }catch{} });
-      num.addEventListener('input', ()=>{ const v=clamp(Number(num.value)||12,8,28); range.value=String(v); state.settings.mobileSidePad=v; applySettingsToUI(); try{ window.ocFitDoc && window.ocFitDoc(); }catch{} });
-
-      $('#densityCozy')?.addEventListener('click', ()=>{ state.settings.density='cozy'; applySettingsToUI(); });
-      $('#densityCompact')?.addEventListener('click', ()=>{ state.settings.density='compact'; applySettingsToUI(); });
-
-      $('#settingsApply')?.addEventListener('click', ()=>{ store.saveSettings(state.settings); flash('Settings saved'); });
-      $('#settingsBack')?.addEventListener('click', ()=> setMode('doc'));
-    }
-
     /* =============== BOOT =============== */
     function boot() {
-      try { applyTheme(store.loadTheme() || 'dark'); } catch {}
-      try { applySettingsToUI(); } catch {}
-
-      // init pieces independently so one failure doesn't kill UI
-      try { initQuill(); } catch (e) { console.error('Quill init failed', e); flash('Editor failed to load — see console'); }
-      try { initCanvas(); } catch (e) { console.error('Canvas init failed', e); flash('Canvas failed to load — see console'); }
+      applyTheme(store.loadTheme() || 'dark');
+      initQuill();
+      initCanvas();
 
       // header controls
-      $('#modeDoc')?.addEventListener('click', () => setMode('doc'));
-      $('#modeCanvas')?.addEventListener('click', () => setMode('canvas'));
-      $('#modeSettings')?.addEventListener('click', () => setMode('settings'));
+      $('#modeDoc').addEventListener('click', () => setMode('doc'));
+      $('#modeCanvas').addEventListener('click', () => setMode('canvas'));
+      $('#newBtn').addEventListener('click', newDocument);
+      $('#saveBtn').addEventListener('click', saveDocument);
 
-      $('#newBtn')?.addEventListener('click', newDocument);
-      $('#saveBtn')?.addEventListener('click', saveDocument);
+      $('#openBtn').addEventListener('click', openFromChooser);
+      $('#openFile').addEventListener('change', (e) => { const f = e.target.files?.[0]; if (f) importProject(f); e.target.value=''; });
 
-      $('#openBtn')?.addEventListener('click', openFromChooser);
-      $('#openFile')?.addEventListener('change', (e) => { const f = e.target.files?.[0]; if (f) importProject(f); e.target.value=''; });
-
-      $('#themeBtn')?.addEventListener('click', toggleTheme);
-
-      // history & sidebar wiring
-      $('#searchHistory')?.addEventListener('input', debounce(refreshHistoryUI, 120));
-      $('#sidebarSearch')?.addEventListener('input', debounce(refreshSidebarUI, 120));
+      // history
+      const menuBtn = document.getElementById('menuBtn');
+      if (menuBtn) menuBtn.addEventListener('click', openHistory);
+      $('#searchHistory').addEventListener('input', debounce(refreshHistoryUI, 120));
+      const sbs = document.getElementById('sidebarSearch');
+      if (sbs) sbs.addEventListener('input', debounce(refreshSidebarUI, 120));
 
       // title dirty tracking
       const titleEl = $('#docTitle');
-      titleEl?.addEventListener('input', markDirty);
-      titleEl?.addEventListener('focus', () => { if (titleEl.value.trim() === 'Untitled note') { titleEl.value = ''; } });
+      titleEl.addEventListener('input', markDirty);
+      // Clear placeholder title on focus for quick rename
+      titleEl.addEventListener('focus', () => { if (titleEl.value.trim() === 'Untitled note') { titleEl.value = ''; } });
 
-      wireMenus(); wireShortcuts(); wireSettings();
+      // theme
+      $('#themeBtn').addEventListener('click', toggleTheme);
 
-      // autosave on idle, visibility change, and every 30s
+      // Mobile bar wiring
+      const mbNew = document.getElementById('mbNew');
+      const mbSave = document.getElementById('mbSave');
+      const mbExport = document.getElementById('mbExport');
+      const mbMode = document.getElementById('mbMode');
+      const mbTheme = document.getElementById('mbTheme');
+      if (mbNew) mbNew.addEventListener('click', newDocument);
+      if (mbSave) mbSave.addEventListener('click', saveDocument);
+      if (mbExport) mbExport.addEventListener('click', (e)=>{ e.stopPropagation(); const b=document.getElementById('exportBtn'); b && b.click(); });
+      if (mbMode) mbMode.addEventListener('click', ()=> setMode(state.mode==='doc' ? 'canvas':'doc'));
+      if (mbTheme) mbTheme.addEventListener('click', toggleTheme);
+
+      wireMenus(); wireShortcuts();
+
+      // autosave on idle, visibility change, and every 30s as a safety net
       setInterval(()=>{ if (state.dirty) saveDocument(); }, 30000);
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && state.dirty) { try { const snap = getSnapshot(); store.upsert(snap); clearDirty(); } catch {} } });
       window.addEventListener('beforeunload', () => { if (state.dirty) { try { const snap = getSnapshot(); store.upsert(snap); } catch {} } });
@@ -1319,7 +1594,6 @@
       // measure header height to position sidebar
       const header = document.querySelector('header');
       if (header) document.documentElement.style.setProperty('--topbar-h', header.offsetHeight + 'px');
-
       // sidebar open/close state
       state.sidebarOpen = store.loadSidebarOpen();
       const applySidebarPadding = () => {
@@ -1335,6 +1609,7 @@
       applySidebarPadding();
       window.addEventListener('resize', debounce(() => { applySidebarPadding(); fitDoc(); }, 120));
 
+      // sidebar toggle (desktop)
       const sbToggle = document.getElementById('toggleSidebar');
       if (sbToggle) sbToggle.addEventListener('click', () => { state.sidebarOpen = !state.sidebarOpen; store.saveSidebarOpen(state.sidebarOpen); applySidebarPadding(); fitDoc(); });
 
@@ -1349,7 +1624,7 @@
         const tH = tb?.offsetHeight || 0;
         const titleH = titleSec?.offsetHeight || 0;
         const availH = Math.max(400, window.innerHeight - hH - tH - titleH - 48);
-        const availW = Math.max(320, wrap.clientWidth);
+        const availW = Math.max(320, wrap.clientWidth - 24);
         const scale = Math.min(availW / 816, availH / 1056, 1);
         state.docScale = scale;
         page.style.left = '';
@@ -1360,17 +1635,14 @@
       window.ocFitDoc = fitDoc;
       window.addEventListener('resize', debounce(fitDoc, 150));
 
-      // Service worker (no change)
+      // Register service worker (PWA)
       if ('serviceWorker' in navigator) {
         try { navigator.serviceWorker.register('./sw.js'); } catch(e) { console.warn('SW registration failed', e); }
       }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      try { boot(); } catch(e) { console.error(e); alert('Boot error: ' + (e?.message||e)); }
-    });
+    document.addEventListener('DOMContentLoaded', boot);
   </script>
-
   <!-- Mobile bottom bar -->
   <nav class="mobile-bar fixed left-1/2 -translate-x-1/2 bottom-3 safe-pad-bottom px-2 py-1.5 glass border rounded-2xl shadow-lg flex items-center gap-1 z-[70]" style="border-color:var(--line); display:none">
     <button id="mbNew" class="px-2 py-1.5 text-sm rounded-xl hover:bg-white/10 flex items-center" aria-label="New">
