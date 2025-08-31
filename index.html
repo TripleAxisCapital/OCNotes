@@ -3,37 +3,45 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>OC Notes — Apple-polished</title>
-  <meta name="description" content="Apple-style hybrid document + canvas editor with reliable toolbars, eraser, and settings." />
+  <title>OC Notes — Hybrid Word × Obsidian (Single-File)</title>
+  <meta name="description" content="Apple-style hybrid note app: rich document editor (Letter page) + freeform canvas with drawing. Export DOCX/PDF/HTML. Recent history. Dark/Light." />
   <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest" crossorigin="use-credentials">
 
-  <!-- Tailwind (CDN) -->
-  <script>window.tailwind = { config: { darkMode: 'class' } }</script>
+  <!-- TailwindCSS (CDN) -->
+  <script> window.tailwind = { config: { darkMode: 'class' } } </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
-          colors: { oc: { accent: '#0A84FF' } },
+          colors: { oc: { accent: '#3B82F6' } },
           borderRadius: { '2.5xl': '1.25rem' },
           boxShadow: {
             glass: '0 1px 0 rgba(255,255,255,0.06) inset, 0 20px 60px rgba(0,0,0,0.35)',
             paper: '0 10px 30px rgba(0,0,0,0.18)'
+          },
+          fontFamily: {
+            system: [
+              'ui-sans-serif','SF Pro Text','-apple-system','BlinkMacSystemFont',
+              'Segoe UI','Roboto','Helvetica Neue','Arial','Noto Sans',
+              'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'
+            ]
           }
         }
       }
     }
   </script>
 
-  <!-- Quill -->
+  <!-- Quill (rich text) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" />
   <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
 
-  <!-- Fabric.js -->
+  <!-- Fabric.js (canvas) -->
   <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
 
   <!-- Export libs -->
@@ -41,125 +49,304 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html-docx-js/0.4.1/html-docx.js"></script>
 
   <style>
-    :root{
-      --bg:#0b0b0b; --text:#ededed; --muted:rgba(255,255,255,0.70);
+    :root {
+      --bg:#0b0b0b; --text:#ededed; --muted:rgba(255,255,255,0.7);
       --panel:rgba(255,255,255,0.06); --panel-2:rgba(255,255,255,0.10);
-      --line:rgba(255,255,255,0.14); --accent:#0A84FF;
-      --paper:#111214; --paper-text:#f2f2f2; --paper-edge:rgba(255,255,255,0.08);
-      --toolbar-gap:6px; --mobile-side-pad:12px; --pagewrap-pad:16px;
+      --line:rgba(255,255,255,0.14); --accent:#3B82F6;
+      --shadow-paper:0 10px 30px rgba(0,0,0,0.18);
+      --paper:#111214; --paper-text:#f2f2f2; --paper-edge:rgba(255,255,255,0.06);
+
+      /* New: spacing controls */
+      --toolbar-gap: 6px;
+      --mobile-side-pad: 12px; /* adjustable in Settings */
     }
     html[data-theme="light"]{
       --bg:#f5f5f7; --text:#0a0a0a; --muted:rgba(0,0,0,0.65);
-      --panel:rgba(255,255,255,0.90); --panel-2:rgba(255,255,255,0.85);
+      --panel:rgba(255,255,255,0.9); --panel-2:rgba(255,255,255,0.85);
       --line:rgba(0,0,0,0.10); --accent:#0A84FF;
       --paper:#ffffff; --paper-text:#0a0a0a; --paper-edge:rgba(0,0,0,0.08);
     }
     html,body{height:100%; overflow-x:hidden}
-    body{background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased}
+    body{
+      background:var(--bg); color:var(--text);
+      overscroll-behavior-x: none;
+      font-family:ui-sans-serif, SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+      -webkit-font-smoothing: antialiased;
+    }
     .glass{background:var(--panel); backdrop-filter:blur(12px)}
     .glass-2{background:var(--panel-2); backdrop-filter:blur(12px)}
+    .grad-bg{
+      background:
+        radial-gradient(1200px 600px at 20% 10%, rgba(99,102,241,0.20), transparent 60%),
+        radial-gradient(1200px 800px at 80% 20%, rgba(56,189,248,0.15), transparent 60%),
+        radial-gradient(1000px 1000px at 50% 100%, rgba(236,72,153,0.10), transparent 60%);
+      animation:breathe 12s ease-in-out infinite;
+    }
+    @keyframes breathe{0%,100%{filter:saturate(100%) brightness(100%)}50%{filter:saturate(120%) brightness(112%)}}
     ::-webkit-scrollbar{width:10px;height:10px}
     ::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px}
-    .z-topbar{z-index:70}.z-drawer{z-index:80}.z-pop{z-index:1000}
+    ::-webkit-scrollbar-track{background:var(--panel-2)}
+    .z-topbar{z-index:70}.z-menu{z-index:75}.z-drawer{z-index:80}.z-pop{z-index:1000}
 
-    /* Quill polish */
-    .ql-toolbar.ql-snow{
-      border:1px solid var(--line) !important;
-      background:var(--panel-2) !important;
-      color:var(--text) !important;
+    /* ✅ Make toolbars/apple-clean and overflow-safe */
+    .toolbar-scroll{ display:flex; flex-wrap:nowrap; align-items:center; gap:var(--toolbar-gap); overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; position:relative; z-index:60 }
+    .toolbar-scroll > *{ flex-shrink:0; white-space:nowrap }
+
+    /* Quill theme polish */
+    .ql-toolbar.ql-snow{border:1px solid var(--line) !important;background:var(--panel-2) !important;color:var(--text) !important}
+    .ql-container.ql-snow{border:1px solid var(--line);background:transparent;color:var(--text)}
+    .ql-editor{color:var(--paper-text)}
+
+    /* Clear selection */
+    html[data-theme="dark"] ::selection{ background: rgba(59,130,246,0.35); color: inherit }
+    html[data-theme="light"] ::selection{ background: rgba(10,132,255,0.28); color: inherit }
+    html[data-theme="dark"] .ql-editor ::selection{ background: rgba(59,130,246,0.35) }
+    html[data-theme="light"] .ql-editor ::selection{ background: rgba(10,132,255,0.28) }
+
+    #pageWrap{
+      display:flex; justify-content:center; align-items:flex-start; padding:16px; overflow-x:hidden; width:100%;
+      background:linear-gradient(var(--bg),var(--bg)) padding-box,
+                 radial-gradient(600px 200px at 50% -50px, rgba(255,255,255,0.08), transparent) border-box;
     }
-    .ql-container.ql-snow{ border:1px solid var(--line); background:transparent }
-    .ql-editor{ color:var(--paper-text) }
+    #page{
+      width:816px; min-height:1056px; background:var(--paper);
+      border:1px solid var(--paper-edge); border-radius:12px; box-shadow:var(--shadow-paper);
+      overflow:visible; position:relative; transform-origin: top center; margin:0 auto;
+    }
+    #page .ql-editor{min-height:calc(1056px - 2in); padding:1in; font-size:16px; line-height:1.6}
 
-    /* Toolbar shell (= never overlaps, scrolls if crowded) */
-    .toolbar-shell{ display:flex; align-items:center; gap:var(--toolbar-gap); overflow-x:auto; flex-wrap:nowrap }
-    .toolbar-shell > *{ flex-shrink:0; white-space:nowrap }
+    /* Title pill */
+    .title-pill{ display:inline-flex; align-items:center; border-radius:9999px }
+    #docTitle{ width:auto; max-width:60ch }
 
-    /* Page */
-    #pageWrap{ display:flex; justify-content:center; padding:var(--pagewrap-pad) }
-    #page{ width:816px; min-height:1056px; background:var(--paper); color:var(--paper-text);
-           border:1px solid var(--paper-edge); border-radius:12px; box-shadow:var(--shadow-paper); transform-origin:top center }
-    #page .ql-editor{ min-height:calc(1056px - 2in); padding:1in; font-size:16px; line-height:1.6 }
+    #canvasHost{min-height:calc(100vh - 260px)}
 
-    /* Canvas */
-    .canvas-toolbar{ overflow-x:auto; white-space:nowrap }
-    .tool-active{ background:#0A84FF !important; color:#fff !important; border-color:#ffffff33 !important }
+    input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0}
+    input[type=number]{-moz-appearance:textfield; appearance:textfield}
 
+    .z-topbar{z-index:50}.z-menu{z-index:55}.z-drawer{z-index:60}
+
+    /* Active tool */
+    .tool-active{
+      background: linear-gradient(135deg, #22d3ee 0%, #10b981 50%, #22d3ee 100%) !important;
+      background-size: 200% 200%;
+      color: #fff !important;
+      animation: ocGradientShift 6s ease-in-out infinite;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.18) inset, 0 6px 18px rgba(34,211,238,0.25);
+      border-color: rgba(255,255,255,0.25) !important;
+    }
+
+    /* Minimal Quill content helpers */
+    .ql-align-center{text-align:center} .ql-align-right{text-align:right} .ql-align-justify{text-align:justify}
+    .ql-indent-1{margin-left:3em} .ql-indent-2{margin-left:6em} .ql-indent-3{margin-left:9em}
+
+    /* Responsive layout refinements */
+    @media (max-width: 1024px){
+      #page{ border-radius:10px }
+      #page .ql-editor{ padding:24px }
+      #pageWrap{ padding:12px }
+      .top-actions{ flex-wrap: wrap; justify-content:flex-end; gap:8px }
+      .mobile-bar{ display:flex !important }
+    }
     @media (max-width: 768px){
-      :root{ --pagewrap-pad: var(--mobile-side-pad) }
+      /* Respect user setting for mobile side padding */
+      #pageWrap{ padding-left: var(--mobile-side-pad); padding-right: var(--mobile-side-pad) }
+      /* Canvas toolbar horizontal scroll on small screens */
+      .canvas-toolbar{ overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; white-space:nowrap; max-width:100% }
+      .canvas-toolbar > *{ flex-shrink:0 }
+      .canvas-fs-toolbar{ max-width: calc(100vw - 16px); overflow-x:auto; -webkit-overflow-scrolling:touch }
     }
+
+    /* Fullscreen canvas */
+    body.fs-canvas-on{ overflow:hidden }
+    body.fs-canvas-on header,
+    body.fs-canvas-on #sidebarDock,
+    body.fs-canvas-on section:nth-of-type(1),
+    body.fs-canvas-on .mobile-bar{ display:none !important }
+    body.fs-canvas-on main{ max-width:100vw; padding:0; margin:0 }
+    body.fs-canvas-on #canvasPanel{ display:block !important; margin-top:0 }
+    body.fs-canvas-on #canvasHost{ position:fixed; inset:0; border-radius:0 }
+    .canvas-fs-exit{ position:absolute; top:12px; right:12px; display:none; z-index:1001 }
+    body.fs-canvas-on .canvas-fs-exit, body.fs-active .canvas-fs-exit{ display:inline-flex }
+    .canvas-fs-toolbar{ position:absolute; top:calc(env(safe-area-inset-top, 0px) + 12px); left:50%; transform: translateX(-50%); display:flex; z-index:1002 }
+    body.fs-canvas-on .canvas-toolbar, body.fs-active .canvas-toolbar{ display:none !important }
+    #canvasHost canvas{ touch-action: none }
+    .canvas-fs-toolbar button, .canvas-fs-toolbar input{ touch-action: manipulation }
+
+    /* Print styles */
+    @media print{
+      body, html{ background:#fff; color:#000 }
+      header, #canvasPanel, #historyDrawer, .mobile-bar{ display:none !important }
+      main{ margin:0; padding:0 }
+      #pageWrap{ background:#fff; box-shadow:none; border:none; padding:0 }
+      #page{ width:816px; min-height:1056px; border:none; box-shadow:none }
+      #page .ql-editor{ padding:1in; color:#000 }
+    }
+
+    /* Safe area for notches */
+    .safe-pad-bottom{ padding-bottom: env(safe-area-inset-bottom) }
+
+    /* Sidebar */
+    @media (min-width: 1024px){
+      body.with-sidebar{ padding-left: 300px }
+      body.with-sidebar header{ margin-left: -300px; width: calc(100% + 300px) }
+    }
+    body.sidebar-collapsed #sidebarDock{ display:none !important }
+    #sidebarDock{ width:300px; position:fixed; left:0; top:var(--topbar-h,64px); bottom:0; padding:12px; display:none }
+    @media (min-width:1024px){ #sidebarDock{ display:block } }
+    #sidebarPanel{ height:100%; display:flex; flex-direction:column }
+    #sidebarList{ overflow:auto; overscroll-behavior:contain }
+    .note-row{ cursor:pointer }
+    .note-row:hover{ background-color: rgba(255,255,255,0.06) }
+    .note-row.active{ outline:1px solid var(--line); background-color: rgba(255,255,255,0.08) }
+
+    /* Glowing plus */
+    .plus-glow{
+      display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; margin-right:8px;
+      border-radius:999px; color:white; font-weight:700; font-size:14px;
+      background: linear-gradient(135deg, #22d3ee 0%, #10b981 50%, #22d3ee 100%);
+      background-size: 200% 200%;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 0 24px rgba(16,185,129,0.35), 0 4px 16px rgba(34,211,238,0.25);
+      animation: ocGradientShift 6s ease-in-out infinite;
+    }
+    .plus-glow svg{ width:14px; height:14px; display:block }
+    .mobile-bar .plus-glow{ margin-right:0 }
+    @keyframes ocGradientShift{
+      0%{ background-position: 0% 50% }
+      50%{ background-position: 100% 50% }
+      100%{ background-position: 0% 50% }
+    }
+
+    /* Quill font + size (labels retained) */
+    .ql-snow .ql-picker.ql-font .ql-picker-label::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item::before { content: attr(data-label); }
+    .ql-font-system{ font-family: ui-sans-serif, SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol; }
+    .ql-font-serif{ font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
+    .ql-font-mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .ql-font-georgia{ font-family: Georgia, Cambria, "Times New Roman", Times, serif; }
+    .ql-font-garamond{ font-family: Garamond, Baskerville, "Times New Roman", Times, serif; }
+    .ql-size-12px{ font-size:12px; }
+    .ql-size-14px{ font-size:14px; }
+    .ql-size-16px{ font-size:16px; }
+    .ql-size-18px{ font-size:18px; }
+    .ql-size-24px{ font-size:24px; }
+    .ql-size-32px{ font-size:32px; }
+    .ql-size-48px{ font-size:48px; }
+
+    /* Menu panel */
+    .menu-panel{ backdrop-filter: blur(12px); background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,0.35); border-radius: 12px; overflow: hidden; }
+    .menu-item{ width:100%; text-align:left; padding:8px 12px; word-break:break-word }
+    .menu-item:hover{ background: rgba(255,255,255,0.10); }
+
+    /* Quill picker dropdown safety */
+    .ql-snow .ql-picker-options{ max-height:60vh; overflow:auto }
+    @media (max-width: 768px){ .ql-snow .ql-picker-options{ max-width:90vw; right:0 !important; left:auto !important } }
+
+    /* Document widgets */
+    .doc-widget{ position:relative; border:1px solid var(--line); border-radius:12px; background:var(--panel-2); padding:8px; margin:12px 0; user-select:text; -webkit-user-select:text; max-width:100% }
+    .doc-widget .drag-handle{ position:absolute; top:6px; left:6px; width:18px; height:18px; border-radius:6px; background:var(--panel); border:1px solid var(--line); display:grid; place-content:center; cursor:grab }
+    .doc-widget .drag-handle::before{ content:'⋮⋮'; font-size:10px; color:var(--muted) }
+    .doc-widget .resize-handle{ position:absolute; right:6px; bottom:6px; width:14px; height:14px; border-right:2px solid var(--line); border-bottom:2px solid var(--line); cursor:nwse-resize; opacity:0.8 }
+    .doc-widget [contenteditable="true"]{ outline:none }
+    .doc-grid{ display:grid; gap:0 }
+    .doc-cell{ border:1px solid var(--line); padding:8px; min-height:28px }
   </style>
 </head>
-<body class="h-full">
-  <!-- Top bar -->
+<body class="h-full selection:bg-white/20">
+
+  <!-- ======= TOP BAR ======= -->
   <header class="sticky top-0 z-topbar">
-    <div class="glass border-b" style="border-color:var(--line)">
-      <div class="w-full flex items-center justify-between gap-3 px-4 py-2">
-        <div class="flex items-center gap-3 min-w-0">
-          <div class="w-8 h-8 rounded-xl bg-white/90 text-black grid place-content-center font-bold flex-shrink-0">OC</div>
-          <div class="leading-tight truncate">
-            <div class="truncate"><strong>OC Notes</strong></div>
-            <div class="text-xs" style="color:var(--muted)">Apple-clean document & canvas</div>
+    <div class="grad-bg">
+      <div class="glass border-b" style="border-color: var(--line)">
+        <div class="w-full flex items-center justify-between gap-3 px-4 py-2">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-white/90 text-black grid place-content-center font-bold">OC</div>
+            <div class="leading-tight">
+              <div class="text-white/95" style="color:var(--text)"><strong>OC Notes</strong></div>
+              <div class="text-xs" style="color:var(--muted)">Hybrid Word × Obsidian — local, private</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- Mobile hamburger only -->
+            <button id="menuBtn" class="lg:hidden px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-label="Open menu">☰</button>
+
+            <!-- Desktop actions only -->
+            <div class="hidden lg:flex items-center gap-2 top-actions">
+              <button id="toggleSidebar" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">History</button>
+              <button id="newBtn"   class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center" style="border-color:var(--line)"><span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>New</button>
+              <button id="openBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Open…</button>
+              <button id="saveBtn"  class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">Save ⌘S</button>
+
+              <!-- Export -->
+              <div class="relative">
+                <button id="exportBtn" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" aria-haspopup="menu" aria-expanded="false">Export ▼</button>
+                <div id="exportMenu" class="hidden absolute right-0 mt-2 w-56 menu-panel z-menu" role="menu" aria-label="Export options">
+                  <button class="menu-item" data-export="docx">Export as .docx (Word)</button>
+                  <button class="menu-item" data-export="pdf">Export as .pdf</button>
+                  <button class="menu-item" data-export="html">Export as .html</button>
+                  <button class="menu-item" data-export="json">Export project (.ocnote)</button>
+                </div>
+              </div>
+
+              <!-- Mode toggle -->
+              <div class="ml-2 flex items-center rounded-xl glass-2 border overflow-hidden" style="border-color:var(--line)">
+                <button id="modeDoc" class="px-3 py-2 text-sm bg-white/10">Document</button>
+                <button id="modeCanvas" class="px-3 py-2 text-sm hover:bg-white/10">Canvas</button>
+                <button id="modeSettings" class="px-3 py-2 text-sm hover:bg-white/10">Settings</button>
+              </div>
+
+              <!-- Theme toggle -->
+              <button id="themeBtn" title="Toggle Light/Dark" class="ml-2 px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)">☀︎/🌙</button>
+            </div>
           </div>
         </div>
-        <div class="hidden lg:flex items-center gap-2">
-          <button id="toggleSidebar" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">History</button>
-          <button id="newBtn"   class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">New</button>
-          <button id="openBtn"  class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Open…</button>
-          <button id="saveBtn"  class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Save ⌘S</button>
-
-          <div class="relative">
-            <button id="exportBtn" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Export ▼</button>
-          </div>
-
-          <div class="ml-2 flex items-center rounded-xl glass-2 border overflow-hidden" style="border-color:var(--line)">
-            <button id="modeDoc" class="px-3 py-2 text-sm bg-white/10">Document</button>
-            <button id="modeCanvas" class="px-3 py-2 text-sm hover:bg-white/10">Canvas</button>
-            <button id="modeSettings" class="px-3 py-2 text-sm hover:bg-white/10">Settings</button>
-          </div>
-
-          <button id="themeBtn" title="Toggle Light/Dark" class="ml-2 px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">☀︎/🌙</button>
-        </div>
-
-        <button id="menuBtn" class="lg:hidden px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">☰</button>
       </div>
     </div>
   </header>
 
-  <!-- Title -->
+  <!-- ======= SIDEBAR (Desktop) ======= -->
+  <aside id="sidebarDock" class="px-3">
+    <div id="sidebarPanel" class="glass rounded-2xl border p-3" style="border-color:var(--line)">
+      <div class="flex items-center gap-2 mb-2">
+        <button id="sbNew" class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm flex items-center flex-shrink-0" style="border-color:var(--line)"><span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>New</button>
+        <input id="sidebarSearch" placeholder="Search notes…" class="w-full glass-2 border rounded-xl px-3 py-2 outline-none" style="border-color:var(--line); color:var(--text)" />
+      </div>
+      <div id="sidebarList" class="space-y-2 pr-1"></div>
+    </div>
+  </aside>
+
+  <!-- ======= TITLE ROW ======= -->
   <section class="max-w-[1200px] mx-auto px-4 mt-3">
     <div class="flex items-center gap-2">
-      <div class="glass-2 border rounded-2xl px-3 py-1.5 w-full md:w-auto" style="border-color:var(--line)">
-        <input id="docTitle" class="bg-transparent outline-none text-lg md:text-xl font-semibold w-full" placeholder="Untitled note" />
+      <div class="title-pill glass-2 border px-3 py-1.5 w-full md:w-auto" style="border-color:var(--line)">
+        <input id="docTitle" class="bg-transparent outline-none text-lg md:text-xl font-semibold w-full" style="color:var(--text)" placeholder="Untitled note" />
       </div>
       <span id="dirtyDot" class="w-2.5 h-2.5 rounded-full bg-rose-400/80 hidden" title="Unsaved changes"></span>
     </div>
   </section>
 
-  <!-- Main -->
+  <!-- ======= MAIN PANELS ======= -->
   <main class="max-w-[1200px] mx-auto px-4 mt-2">
-    <!-- Document -->
+    <!-- Document Mode -->
     <div id="docPanel" class="space-y-3">
-      <!-- ✅ Quill toolbar container with required classes -->
+      <!-- ✅ Ensure Quill gets proper theme classes so styling never disappears -->
       <div id="quillToolbar" class="rounded-2xl">
-        <div id="quillToolbarShell" class="ql-toolbar ql-snow glass border rounded-2xl toolbar-shell" style="border-color:var(--line)">
-          <!-- Filled by renderQuillToolbar() -->
-        </div>
+        <div class="ql-toolbar ql-snow glass border rounded-2xl toolbar-scroll" id="quillToolbarShell" style="border-color:var(--line)"></div>
       </div>
-
-      <div id="pageWrap" class="glass border rounded-2xl" style="border-color:var(--line)">
+      <div id="pageWrap" class="rounded-2xl glass border" style="border-color:var(--line)">
         <div id="page"><div id="quillEditor"></div></div>
       </div>
     </div>
 
-    <!-- Canvas -->
+    <!-- Canvas Mode -->
     <div id="canvasPanel" class="hidden">
-      <div id="canvasToolDock" class="canvas-toolbar glass rounded-2xl border p-2 flex items-center gap-2" style="border-color:var(--line)">
-        <button class="tool px-3 py-1.5 glass-2 border rounded-lg text-sm" data-tool="select" style="border-color:var(--line)">Move</button>
-        <button class="tool px-3 py-1.5 glass-2 border rounded-lg text-sm" data-tool="text"   style="border-color:var(--line)">Text</button>
-        <button class="tool px-3 py-1.5 glass-2 border rounded-lg text-sm" data-tool="sticky" style="border-color:var(--line)">Sticky</button>
-        <button class="tool px-3 py-1.5 glass-2 border rounded-lg text-sm" data-tool="draw"   style="border-color:var(--line)">Pen</button>
-        <button class="tool px-3 py-1.5 glass-2 border rounded-lg text-sm" data-tool="erase"  style="border-color:var(--line)">Erase</button>
+      <div id="canvasToolDock" class="canvas-toolbar glass rounded-2xl border p-2 flex flex-wrap items-center gap-2" style="border-color:var(--line)">
+        <button class="tool" data-tool="select" title="V">Move</button>
+        <button class="tool" data-tool="text"   title="T">Text</button>
+        <button class="tool" data-tool="sticky" title="N">Sticky</button>
+        <button class="tool" data-tool="draw"   title="P">Pen</button>
+        <button class="tool" data-tool="erase"  title="⌫">Erase</button>
 
         <div class="ml-2 flex items-center gap-2">
           <label class="text-sm" style="color:var(--muted)">Brush</label>
@@ -171,6 +358,7 @@
           <input id="brushColor" type="color" value="#ffffff" class="w-9 h-9 p-0 bg-transparent border rounded-lg" style="border-color:var(--line)" />
         </div>
 
+        <!-- Grid + Snap -->
         <div class="ml-4 flex items-center gap-2">
           <label class="text-sm" style="color:var(--muted)">Grid</label>
           <input id="gridToggle" type="checkbox" />
@@ -180,33 +368,55 @@
           <input id="gridSize" type="number" value="24" min="4" max="200" class="w-16 glass-2 border rounded-lg px-2 py-1 text-sm" style="border-color:var(--line)" />
         </div>
 
+        <!-- Canvas BG -->
         <div class="ml-4 flex items-center gap-2">
           <label class="text-sm" style="color:var(--muted)">Canvas BG</label>
           <input id="canvasBg" type="color" value="#0f0f11" class="w-9 h-9 p-0 bg-transparent border rounded-lg" style="border-color:var(--line)" />
         </div>
 
         <div class="ml-auto flex items-center gap-2">
-          <button id="zoomOut" class="px-3 py-1.5 glass-2 rounded-lg border text-sm" style="border-color:var(--line)">−</button>
+          <button id="zoomOut" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">−</button>
           <input id="zoomLevel" type="number" class="w-16 glass-2 border rounded-lg px-2 py-1 text-sm" style="border-color:var(--line)" value="100" />%
-          <button id="zoomIn" class="px-3 py-1.5 glass-2 rounded-lg border text-sm" style="border-color:var(--line)">+</button>
-          <button id="centerCanvas" class="px-3 py-1.5 glass-2 rounded-lg border text-sm" style="border-color:var(--line)">Center</button>
-          <button id="clearCanvas" class="px-3 py-1.5 glass-2 rounded-lg border text-sm" style="border-color:var(--line)">Clear</button>
+          <button id="zoomIn" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">+</button>
+          <button id="centerCanvas" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Center</button>
+          <button id="clearCanvas" class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Clear</button>
+        </div>
+        <div class="basis-full text-xs opacity-70 mt-1" style="color:var(--muted)">
+          Move tool to drag · Text tool to type · Space = pan · Wheel = zoom
         </div>
       </div>
 
+      <!-- Canvas Surface -->
       <div id="canvasHost" class="glass rounded-2xl border mt-3 overflow-hidden" style="border-color:var(--line); position:relative">
+        <div id="fsToolbar" class="canvas-fs-toolbar glass border rounded-xl px-2 py-1.5 flex items-center gap-1" style="border-color:var(--line)">
+          <button id="fsToolbarExit" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Full</button>
+          <div class="h-5 w-px bg-white/10 mx-1"></div>
+          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="select">Move</button>
+          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="sticky">Sticky</button>
+          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="text">Text</button>
+          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="draw">Pen</button>
+          <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="erase">Erase</button>
+          <div class="h-5 w-px bg-white/10 mx-1"></div>
+          <input id="fsColor" type="color" class="w-7 h-7 p-0 bg-transparent border rounded-lg" style="border-color:var(--line)" title="Text/Brush Color" />
+          <input id="fsBrush" type="range" min="1" max="24" value="3" class="align-middle" title="Pen Thickness" style="width:90px" />
+          <div class="h-5 w-px bg-white/10 mx-1"></div>
+          <button id="fsUndo" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Undo</button>
+          <button id="fsRedo" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Redo</button>
+          <div class="h-5 w-px bg-white/10 mx-1"></div>
+          <button id="fsInsertInvoice" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Invoice</button>
+        </div>
         <canvas id="ocCanvas"></canvas>
       </div>
     </div>
 
-    <!-- Settings -->
-    <div id="settingsPanel" class="hidden">
-      <div class="glass rounded-2xl border p-4 md:p-6" style="border-color:var(--line)">
-        <h2 class="text-xl font-semibold mb-3">Settings</h2>
-        <div class="grid md:grid-cols-2 gap-4">
+    <!-- ======= SETTINGS ======= -->
+    <div id="settingsPanel" class="hidden space-y-3">
+      <div class="glass border rounded-2xl p-4 md:p-6" style="border-color:var(--line)">
+        <h2 class="text-xl font-semibold">Settings</h2>
+        <div class="grid md:grid-cols-2 gap-4 mt-3">
           <div class="glass-2 border rounded-xl p-3" style="border-color:var(--line)">
-            <div class="font-medium mb-2">Mobile document side padding</div>
-            <div class="text-sm mb-3" style="color:var(--muted)">Default: 12px</div>
+            <div class="font-medium">Mobile document side padding</div>
+            <div class="text-xs mb-3" style="color:var(--muted)">Default 12px. Affects left/right padding of the document preview on small screens.</div>
             <div class="flex items-center gap-2">
               <input id="setMobilePad" type="range" min="8" max="28" step="1" class="w-56" />
               <input id="setMobilePadNumber" type="number" min="8" max="28" step="1" class="w-16 glass-2 border rounded-lg px-2 py-1 text-sm" style="border-color:var(--line)" />
@@ -214,11 +424,12 @@
             </div>
           </div>
           <div class="glass-2 border rounded-xl p-3" style="border-color:var(--line)">
-            <div class="font-medium mb-2">Interface density</div>
-            <div class="flex gap-2">
+            <div class="font-medium">Toolbar density</div>
+            <div class="flex gap-2 mt-2">
               <button id="densityCozy" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Cozy</button>
               <button id="densityCompact" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">Compact</button>
             </div>
+            <div class="text-xs mt-2" style="color:var(--muted)">Compact reduces gaps for tighter horizontal toolbars.</div>
           </div>
         </div>
         <div class="mt-6 flex items-center justify-end gap-2">
@@ -229,484 +440,944 @@
     </div>
   </main>
 
-  <!-- History Drawer -->
+  <!-- ======= HISTORY DRAWER ======= -->
   <div id="historyDrawer" class="fixed inset-0 hidden z-drawer">
     <div class="absolute inset-0 bg-black/50" data-close-history></div>
     <div class="absolute left-0 top-0 h-full w-[360px] glass border-r p-4 overflow-y-auto" style="border-color:var(--line)">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold">Workspaces</h3>
+        <h3 class="text-lg font-semibold" style="color:var(--text)">Workspaces</h3>
         <div class="flex items-center gap-2">
-          <button id="drawerNew" class="px-3 py-1.5 glass-2 rounded-lg border text-sm" style="border-color:var(--line)">New</button>
-          <button data-close-history class="px-3 py-1.5 glass-2 rounded-lg border text-sm" style="border-color:var(--line)">Close</button>
+          <button id="drawerNew" class="w-9 h-9 grid place-content-center glass-2 hover:bg-white/20 rounded-lg border" style="border-color:var(--line)" title="New workspace" aria-label="New workspace"><span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+          <button data-close-history class="px-3 py-1.5 glass-2 hover:bg-white/20 rounded-lg border text-sm" style="border-color:var(--line)">Close</button>
         </div>
       </div>
       <div class="mb-3">
-        <input id="searchHistory" placeholder="Search…" class="w-full glass-2 border rounded-xl px-3 py-2 outline-none" style="border-color:var(--line)" />
+        <input id="searchHistory" placeholder="Search…" class="w-full glass-2 border rounded-xl px-3 py-2 outline-none" style="border-color:var(--line); color:var(--text)" />
       </div>
       <div id="historyList" class="space-y-2"></div>
+      <div class="mt-4 pt-3 border-t" style="border-color:var(--line)">
+        <div class="text-xs mb-2" style="color:var(--muted)">Export current</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" data-drawer-export="docx">DOCX</button>
+          <button class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" data-drawer-export="pdf">PDF</button>
+          <button class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" data-drawer-export="html">HTML</button>
+          <button class="px-3 py-2 glass-2 hover:bg-white/20 rounded-xl border text-sm" style="border-color:var(--line)" data-drawer-export="json">Project</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Sidebar (desktop) -->
-  <aside id="sidebarDock" class="hidden lg:block fixed left-0 top-[64px] bottom-0 w-[300px] px-3">
-    <div class="glass rounded-2xl border p-3 h-full" style="border-color:var(--line)">
-      <div class="flex items-center gap-2 mb-2">
-        <button id="sbNew" class="px-3 py-2 glass-2 rounded-xl border text-sm" style="border-color:var(--line)">New</button>
-        <input id="sidebarSearch" placeholder="Search notes…" class="w-full glass-2 border rounded-xl px-3 py-2 outline-none" style="border-color:var(--line)" />
-      </div>
-      <div id="sidebarList" class="space-y-2 pr-1 h-[calc(100%-44px)] overflow-auto"></div>
-    </div>
-  </aside>
-
-  <!-- Hidden input + export menu portal -->
+  <!-- Hidden file input -->
   <input id="openFile" type="file" accept=".ocnote,application/json" class="hidden" />
-  <div id="exportMenu" class="hidden fixed z-pop menu-panel w-56 glass border rounded-xl overflow-hidden" style="border-color:var(--line)"></div>
+
+  <!-- Offscreen export staging -->
+  <div id="exportStage" style="position:absolute; left:-9999px; top:0; width:816px; background:#fff; color:#000; padding:24px;"></div>
 
   <script>
-    /*************** tiny helpers ***************/
-    const $  = (s, el=document)=> el.querySelector(s);
-    const $$ = (s, el=document)=> Array.from(el.querySelectorAll(s));
-    const uid= ()=> 'oc_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-    const clamp = (v,a,b)=> Math.max(a,Math.min(b,v));
-    const niceDate = iso => { try { return new Date(iso).toLocaleString(); } catch { return iso; } };
-    const flash = (msg, ms=1600) => {
-      const d=document.createElement('div');
-      d.textContent=msg; d.className='fixed bottom-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl glass border';
-      d.style.borderColor=getComputedStyle(document.body).getPropertyValue('--line');
-      document.body.appendChild(d); setTimeout(()=>d.remove(), ms);
-    };
+    /* =============== UTILITIES =============== */
+    const $  = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+    const uid = () => 'oc_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const nowISO = () => new Date().toISOString();
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const safeFileName = (name) => (name || 'note').replace(/[^a-z0-9\-]+/gi,'_');
+    const escapeHtml = (str) => (str+'').replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;","&gt;":"&gt;","\"":"&quot;","'":"&#39;"}[s]));
+    const niceDate = (iso) => { try { return new Date(iso).toLocaleString(); } catch { return iso; } }
+    const isSafari = () => /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
+    function debounce(fn, ms=300){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args),ms) }; }
+    function hexToRGBA(hex, a=1){
+      try{
+        let h = hex.replace('#','');
+        if (h.length===3) h = h.split('').map(c=>c+c).join('');
+        const n = parseInt(h,16); const r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+        return `rgba(${r},${g},${b},${a})`;
+      }catch{ return `rgba(255,255,255,${a})`; }
+    }
+    function currentUIColor(){
+      const bc = document.getElementById('brushColor');
+      const val = bc?.value || '#ffffff';
+      return val;
+    }
+    function flash(msg) {
+      const div = document.createElement('div');
+      div.textContent = msg;
+      div.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl glass border text-white';
+      div.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
+      document.body.appendChild(div);
+      setTimeout(()=>div.remove(), 1400);
+    }
+
+    async function downloadBlob(blob, filename) {
+      const a = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
+    function blobToDataURL(blob){
+      return new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = rej;
+        fr.readAsDataURL(blob);
+      });
+    }
+
+    /* =============== PERSISTENCE =============== */
     const store = {
-      key:'oc_notes_history_v5', themeKey:'oc_theme', settingsKey:'oc_settings_v1',
-      loadAll(){ try{return JSON.parse(localStorage.getItem(this.key))||[]}catch{return[]} },
-      saveAll(v){ localStorage.setItem(this.key, JSON.stringify(v)); },
-      upsert(doc){ const a=this.loadAll(); const i=a.findIndex(x=>x.id===doc.id); if(i>=0)a[i]=doc; else a.unshift(doc); this.saveAll(a.slice(0,25)); },
-      loadTheme(){ return localStorage.getItem(this.themeKey); }, saveTheme(v){ localStorage.setItem(this.themeKey,v); },
-      loadSettings(){ try{return Object.assign({mobileSidePad:12,density:'cozy'}, JSON.parse(localStorage.getItem(this.settingsKey))||{})}catch{return {mobileSidePad:12,density:'cozy'}} },
+      key: 'oc_notes_history_v4',
+      themeKey: 'oc_theme',
+      sidebarKey: 'oc_sidebar_open',
+      settingsKey: 'oc_settings_v1',
+      loadAll() { try { return JSON.parse(localStorage.getItem(this.key)) || []; } catch { return []; } },
+      saveAll(list) { localStorage.setItem(this.key, JSON.stringify(list)); },
+      upsert(doc) {
+        const list = this.loadAll();
+        const idx = list.findIndex(x => x.id === doc.id);
+        if (idx >= 0) list[idx] = doc; else list.unshift(doc);
+        this.saveAll(list.slice(0,25));
+      },
+      saveTheme(v){ localStorage.setItem(this.themeKey, v); },
+      loadTheme(){ return localStorage.getItem(this.themeKey); },
+      saveSidebarOpen(v){ localStorage.setItem(this.sidebarKey, v ? '1':'0'); },
+      loadSidebarOpen(){ return localStorage.getItem(this.sidebarKey) !== '0'; },
+      loadSettings(){ try { return Object.assign({ mobileSidePad:12, density:'cozy' }, JSON.parse(localStorage.getItem(this.settingsKey))||{}); } catch { return { mobileSidePad:12, density:'cozy' }; } },
       saveSettings(s){ localStorage.setItem(this.settingsKey, JSON.stringify(s)); }
     };
 
+    /* =============== STATE =============== */
     const state = {
-      id: uid(), mode:'doc', dirty:false, quill:null, canvas:null,
-      hist:{stack:[], idx:-1}, zoom:1, grid:{show:false,snap:false,size:24},
-      settings: store.loadSettings()
+      id: uid(),
+      mode: 'doc', // 'doc' | 'canvas' | 'settings'
+      dirty: false,
+      quill: null,
+      canvas: null,
+      hist: { stack: [], idx: -1 },
+      suppressHistory: false,
+      currentTool: 'select',
+      awaitingPlacement: null,
+      zoom: 1,
+      isSpacePanning: false,
+      grid: { show:false, snap:false, size:24, targetTol:10 },
+      sidebarOpen: true,
+      docScale: 1,
+      settings: store.loadSettings(),
     };
+    const markDirty = () => { state.dirty = true; $('#dirtyDot').classList.remove('hidden'); try { autoSave && autoSave(); } catch {} }
+    const clearDirty = () => { state.dirty = false; $('#dirtyDot').classList.add('hidden'); }
 
-    const markDirty = ()=>{ state.dirty=true; $('#dirtyDot').classList.remove('hidden'); };
-    const clearDirty= ()=>{ state.dirty=false; $('#dirtyDot').classList.add('hidden'); };
+    /* =============== THEME =============== */
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      if (t === 'dark') document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+      store.saveTheme(t);
+      const metaTags = document.querySelectorAll('meta[name="theme-color"]');
+      metaTags.forEach(m => {
+        if (t==='dark' && m.media?.includes('dark')) m.setAttribute('content', '#0b0b0b');
+        if (t==='light' && m.media?.includes('light')) m.setAttribute('content', '#f5f5f7');
+      });
+    }
+    function toggleTheme() { applyTheme((document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark'); }
 
-    function applyTheme(t){ document.documentElement.setAttribute('data-theme', t); store.saveTheme(t); }
-    function toggleTheme(){ applyTheme( (document.documentElement.getAttribute('data-theme')||'dark')==='dark' ? 'light':'dark' ); }
-
-    /*************** Quill ***************/
-    function renderQuillToolbar(){
+    /* =============== QUILL =============== */
+    function renderQuillToolbar() {
+      // keep your original layout but ensure toolbar gets Quill theme classes
       const shell = $('#quillToolbarShell');
       shell.innerHTML = `
         <span class="ql-formats">
           <select class="ql-font">
-            <option selected value="sans">System</option>
-            <option value="serif">Serif</option>
-            <option value="monospace">Mono</option>
-          </select>
-          <select class="ql-size">
-            <option value="small"></option>
-            <option value="normal" selected></option>
-            <option value="large"></option>
-            <option value="huge"></option>
-          </select>
-          <select class="ql-header">
-            <option selected></option><option value="1">H1</option><option value="2">H2</option><option value="3">H3</option>
+            <option selected value="system" data-label="System">System</option>
+            <option value="serif" data-label="Serif">Serif</option>
+            <option value="mono" data-label="Mono">Mono</option>
+            <option value="georgia" data-label="Georgia">Georgia</option>
+            <option value="garamond" data-label="Garamond">Garamond</option>
           </select>
         </span>
         <span class="ql-formats">
-          <button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button><button class="ql-strike"></button>
+          <select class="ql-header"><option selected></option><option value="1">H1</option><option value="2">H2</option><option value="3">H3</option></select>
+        </span>
+        <span class="ql-formats">
+          <button class="ql-bold"></button><button class="ql-italic"></button>
+          <button class="ql-underline"></button><button class="ql-strike"></button>
         </span>
         <span class="ql-formats">
           <button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button>
-          <select class="ql-align"></select>
         </span>
+        <span class="ql-formats"><select class="ql-align"></select></span>
+        <span class="ql-formats"><button class="ql-link"></button><button class="ql-image"></button><button class="ql-code-block"></button></span>
+        <span class="ql-formats"><button class="ql-indent" value="-1"></button><button class="ql-indent" value="+1"></button></span>
+        <span class="ql-formats"><select class="ql-color"></select><select class="ql-background"></select></span>
         <span class="ql-formats">
-          <button class="ql-link"></button><button class="ql-image"></button><button class="ql-code-block"></button>
+          <select class="ql-size">
+            <option value="12px">12</option>
+            <option value="14px">14</option>
+            <option selected value="16px">16</option>
+            <option value="18px">18</option>
+            <option value="24px">24</option>
+            <option value="32px">32</option>
+            <option value="48px">48</option>
+          </select>
         </span>
         <span class="ql-formats"><button class="ql-clean"></button></span>
         <span class="ql-formats">
-          <button id="docInsertInvoice" class="px-2 py-1 text-sm rounded-lg glass-2 border" style="border-color:var(--line)">Invoice</button>
+          <button id="docInsertInvoice" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Invoice</button>
         </span>
       `;
     }
-
-    function initQuill(){
-      if (!window.Quill) throw new Error('Quill failed to load');
+    function initQuill() {
       renderQuillToolbar();
+      const Font = Quill.import('attributors/class/font');
+      Font.whitelist = ['system','serif','mono','georgia','garamond'];
+      Quill.register(Font, true);
+      const Size = Quill.import('attributors/class/size');
+      Size.whitelist = ['12px','14px','16px','18px','24px','32px','48px'];
+      Quill.register(Size, true);
+
       const q = new Quill('#quillEditor', { theme:'snow', modules:{ toolbar:'#quillToolbarShell' } });
       state.quill = q;
       q.on('text-change', markDirty);
-      $('#docInsertInvoice')?.addEventListener('click', () => {
-        const html = `
-          <div class="doc-widget" style="border:1px solid var(--line); border-radius:12px; padding:8px; margin:12px 0;">
-            <div style="text-align:center; font-weight:700; font-size:22px; margin-bottom:8px; color:var(--accent)">INVOICE</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-              <div contenteditable="true">From:<br>Your Company<br>Address</div>
-              <div contenteditable="true">Bill To:<br>Client Name<br>Address</div>
-            </div>
-            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr;">
-              <div style="font-weight:600;border:1px solid var(--line);padding:8px">Item</div>
-              <div style="font-weight:600;border:1px solid var(--line);padding:8px">Qty</div>
-              <div style="font-weight:600;border:1px solid var(--line);padding:8px">Price</div>
-              <div style="font-weight:600;border:1px solid var(--line);padding:8px">Amount</div>
-            </div>
-            ${Array.from({length:4}).map(()=>`
-              <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr;">
-                <div contenteditable="true" style="border:1px solid var(--line);padding:8px"><br/></div>
-                <div contenteditable="true" style="border:1px solid var(--line);padding:8px"><br/></div>
-                <div contenteditable="true" style="border:1px solid var(--line);padding:8px"><br/></div>
-                <div contenteditable="true" style="border:1px solid var(--line);padding:8px"><br/></div>
-              </div>`).join('')}
-            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px">
-              <div contenteditable="true" style="border:1px solid var(--line);padding:8px">Notes</div>
-              <div style="text-align:right; font-weight:600">Total:</div>
-              <div contenteditable="true" style="border:1px solid var(--line);padding:8px">$0.00</div>
-            </div>
-          </div>`;
+
+      $('#docInsertInvoice')?.addEventListener('click', () => insertInvoiceDoc());
+
+      function insertInvoiceDoc(){
+        const col = currentUIColor();
+        const border = hexToRGBA(col, 0.35);
+        const header = `<div style=\"text-align:center; font-weight:700; font-size:22px; margin-bottom:8px; color:${col}\">INVOICE</div>`;
+        const parties = `<div style=\"display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; color:${col}\"><div contenteditable=\"true\">From:<br>Your Company<br>Address</div><div contenteditable=\"true\">Bill To:<br>Client Name<br>Address</div></div>`;
+        const thCell = `class=\\"doc-cell\\" style=\\"font-weight:600; border:1px solid ${border}; color:${col}\\"`;
+        const tdCell = `class=\\"doc-cell\\" style=\\"border:1px solid ${border}; color:${col}\\" contenteditable=\\"true\\"`;
+        const tableHead = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr 1fr;\"><div ${thCell}>Item</div><div ${thCell}>Qty</div><div ${thCell}>Price</div><div ${thCell}>Amount</div></div>`;
+        const rows = Array.from({length:4}).map(()=>`<div style=\"display:grid; grid-template-columns:2fr 1fr 1fr 1fr;\"><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div><div ${tdCell}><br></div></div>`).join('');
+        const totals = `<div style=\"display:grid; grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:center; margin-top:12px\"><div class=\"doc-cell\" style=\"border:1px solid ${border}; color:${col}\" contenteditable=\"true\">Notes</div><div style=\"text-align:right; font-weight:600; color:${col}\">Total:</div><div class=\"doc-cell\" style=\"border:1px solid ${border}; color:${col}\" contenteditable=\"true\">$0.00</div></div>`;
+        const body = `<div>${header}${parties}<div class=\"doc-grid\">${tableHead}${rows}</div>${totals}</div>`;
+        const html = `<div class=\"doc-widget\" style=\"border-color:${border}; color:${col}\" contenteditable=\"false\" draggable=\"true\" data-type=\"invoice\"><div class=\"drag-handle\" title=\"Drag\"></div><div class=\"resize-handle\" title=\"Resize\"></div>${body}</div>`;
         q.clipboard.dangerouslyPasteHTML(q.getSelection()?.index ?? q.getLength(), html);
         markDirty();
-      });
+      }
+
+      // Doc widgets drag/resize (unchanged)
+      (function wireDocWidgets(){
+        const root = q.root;
+        let dragEl = null;
+        root.addEventListener('dragstart', (e) => {
+          const w = e.target.closest('.doc-widget');
+          if (!w) { e.preventDefault(); return; }
+          dragEl = w; w.style.opacity = '0.5';
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', 'doc-widget');
+        });
+        root.addEventListener('dragend', () => { if (dragEl) dragEl.style.opacity=''; dragEl=null; });
+        root.addEventListener('dragover', (e) => { if (dragEl) e.preventDefault(); });
+        root.addEventListener('drop', (e) => {
+          if (!dragEl) return; e.preventDefault();
+          const target = e.target.closest('.doc-widget');
+          const parent = root;
+          if (target && target !== dragEl) {
+            const rect = target.getBoundingClientRect();
+            if (e.clientY < rect.top + rect.height/2) parent.insertBefore(dragEl, target);
+            else parent.insertBefore(dragEl, target.nextSibling);
+          }
+          dragEl.style.opacity=''; dragEl=null; markDirty();
+        });
+
+        // Resize handle
+        let rs = { el:null, startX:0, startW:0 };
+        root.addEventListener('pointerdown', (e) => {
+          if (!e.target.classList.contains('resize-handle')) return;
+          const w = e.target.closest('.doc-widget'); if (!w) return;
+          rs.el = w; rs.startX = e.clientX; rs.startW = w.offsetWidth;
+          e.preventDefault(); e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+        });
+        root.addEventListener('pointermove', (e) => {
+          if (!rs.el) return;
+          const dx = (e.clientX - rs.startX);
+          const maxW = root.clientWidth - 16; const minW = 200;
+          const newW = Math.max(minW, Math.min(maxW, rs.startW + dx));
+          rs.el.style.width = newW + 'px';
+        });
+        root.addEventListener('pointerup', () => { if (rs.el) { rs.el=null; markDirty(); } });
+        root.addEventListener('pointercancel', () => { rs.el=null; });
+
+        root.addEventListener('input', (e) => { if (e.target.closest('.doc-widget')) markDirty(); });
+      })();
     }
 
-    /*************** Fabric Canvas (with robust Eraser) ***************/
-    function initCanvas(){
-      if (!window.fabric) throw new Error('Fabric failed to load');
-      const cEl = $('#ocCanvas'), host = $('#canvasHost');
+    /* =============== FABRIC CANVAS (fixed eraser) =============== */
+    function initCanvas() {
+      const host = $('#canvasHost');
+      const cEl = $('#ocCanvas');
       const canvas = new fabric.Canvas(cEl, {
-        backgroundColor:null, selection:true, preserveObjectStacking:true, perPixelTargetFind:true, targetFindTolerance:10
+        backgroundColor: null, // use host background so erasing never clears bg
+        selection: true,
+        preserveObjectStacking: true,
+        perPixelTargetFind: true,
+        targetFindTolerance: state.grid.targetTol
       });
       state.canvas = canvas;
+      try { canvas.upperCanvasEl.setAttribute('tabindex','1'); } catch {}
 
-      function resize(){
-        const w = host.clientWidth || window.innerWidth;
-        const h = Math.max(600, window.innerHeight - 260);
-        cEl.width = w; cEl.height = h;
-        canvas.setWidth(w); canvas.setHeight(h);
-        canvas.requestRenderAll();
+      // History (simple)
+      const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
+      function pushHistory(){
+        if (!canvas || state.suppressHistory) return;
+        try {
+          const snap = { json: canvas.toJSON(SAVE_PROPS), bg: $('#canvasHost').style.backgroundColor || '#0f0f11' };
+          state.hist.stack = state.hist.stack.slice(0, state.hist.idx + 1);
+          state.hist.stack.push(snap);
+          state.hist.idx = state.hist.stack.length - 1;
+        } catch {}
       }
-      resize(); window.addEventListener('resize', ()=>requestAnimationFrame(resize));
+      const pushHistoryDebounced = debounce(pushHistory, 250);
+      canvas.__pushHistoryDebounced = pushHistoryDebounced;
+      async function loadHistoryAt(idx){
+        if (idx < 0 || idx >= state.hist.stack.length) return;
+        const snap = state.hist.stack[idx];
+        state.suppressHistory = true;
+        try {
+          await new Promise(res => canvas.loadFromJSON(snap.json, () => res()));
+          $('#canvasHost').style.backgroundColor = snap.bg || '#0f0f11';
+          canvas.requestRenderAll();
+        } finally {
+          state.suppressHistory = false;
+        }
+      }
+      async function undoCanvas(){ if (state.hist.idx > 0) { state.hist.idx--; await loadHistoryAt(state.hist.idx); } }
+      async function redoCanvas(){ if (state.hist.idx < state.hist.stack.length - 1) { state.hist.idx++; await loadHistoryAt(state.hist.idx); } }
 
-      // default brush
+      // Resize to container
+      const resize = () => {
+        const vv = window.visualViewport;
+        const vw = (vv?.width) ? Math.round(vv.width) : (host.clientWidth || window.innerWidth || 1200);
+        const vh = (vv?.height) ? Math.round(vv.height) : window.innerHeight;
+        const fsOn = document.body.classList.contains('fs-canvas-on');
+        const h = fsOn ? vh : Math.max(600, window.innerHeight - 260);
+        cEl.width = vw; cEl.height = h;
+        canvas.setWidth(vw); canvas.setHeight(h);
+        canvas.requestRenderAll();
+      };
+      resize();
+      window.addEventListener('resize', debounce(resize, 120));
+      if (window.visualViewport){
+        visualViewport.addEventListener('resize', debounce(resize, 60));
+        visualViewport.addEventListener('scroll', debounce(resize, 60));
+      }
+
+      // drawing defaults
       canvas.isDrawingMode = false;
       canvas.freeDrawingBrush.width = 3;
       canvas.freeDrawingBrush.color = '#ffffff';
 
-      // eraser tool setup
-      function setEraseBrush(){
-        canvas.isDrawingMode = true;
-        if (fabric.EraserBrush) {
-          canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
-          canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
-        } else {
-          canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-          canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
-          canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)';
-        }
-        canvas.defaultCursor = 'crosshair';
-      }
-
-      // path handling
-      canvas.on('path:created', (e) => {
-        const p = e.path, tool = state.currentTool;
-        if (tool === 'erase') {
-          if (!fabric.EraserBrush) {
-            p.globalCompositeOperation = 'destination-out';
-            p.stroke = 'rgba(0,0,0,1)';
-            p.fill = null; p.selectable=false; p.evented=false; p.strokeUniform=true;
-          }
-          markDirty(); return;
-        }
-        p.set({ fill:null, stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3),
-                selectable:true, evented:true, strokeUniform:true, erasable:true });
-        markDirty();
-      });
-
-      // tools
+      // ✅ Correct eraser behavior
       function useTool(kind){
         state.currentTool = kind;
+        state.awaitingPlacement = null;
         canvas.isDrawingMode = false;
+        canvas.defaultCursor = 'default';
         canvas.selection = (kind === 'select');
-        $$('#canvasPanel .tool').forEach(b => b.classList.toggle('tool-active', b.dataset.tool === kind));
-        if (kind === 'draw'){
+
+        // button active visual
+        const toolBtns = $$('#canvasPanel .tool');
+        const fsToolBtns = $$('#fsToolbar [data-tool]');
+        toolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === kind));
+        fsToolBtns.forEach(b => b.classList.toggle('tool-active', b.dataset.tool === kind));
+
+        if (kind === 'draw') {
           canvas.isDrawingMode = true;
-          if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) {
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          }
           canvas.freeDrawingBrush.color = $('#brushColor').value || '#ffffff';
           canvas.freeDrawingBrush.width = Number($('#brushSize').value || 3);
+          canvas.defaultCursor = 'crosshair';
           return;
         }
-        if (kind === 'erase'){ setEraseBrush(); return; }
+        if (kind === 'text' || kind === 'sticky') {
+          canvas.defaultCursor = 'crosshair';
+          return;
+        }
+        if (kind === 'erase') {
+          canvas.isDrawingMode = true;
+          if (fabric.EraserBrush) {
+            canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
+            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
+          } else {
+            // Fallback: destination-out stroke
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.width = Number($('#brushSize').value || 12);
+            canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)';
+            canvas.freeDrawingBrush._finalizeAndAddPath = function () {
+              const ctx = this.canvas.contextTop, pathData = this._points;
+              const path = this._createPath(pathData);
+              path.globalCompositeOperation = 'destination-out';
+              path.fill = null; path.stroke = 'rgba(0,0,0,1)'; path.strokeUniform = true;
+              path.selectable = false; path.evented = false;
+              this.canvas.add(path); this.canvas.requestRenderAll(); this._resetShadow(); this._reset();
+            };
+          }
+          canvas.defaultCursor = 'crosshair';
+          return;
+        }
       }
-      // expose for buttons
-      $$('#canvasPanel .tool').forEach(btn => btn.addEventListener('click', () => useTool(btn.dataset.tool)));
+
+      // tools init (wire buttons once)
+      const toolBtns = $$('#canvasPanel .tool');
+      const fsToolBtns = $$('#fsToolbar [data-tool]');
+      toolBtns.forEach(btn => {
+        btn.classList.add('px-3','py-1.5','glass-2','hover:bg-white/20','rounded-lg','border','text-sm');
+        btn.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
+        btn.addEventListener('click', () => useTool(btn.dataset.tool));
+      });
+      fsToolBtns.forEach(btn => btn.addEventListener('click', () => useTool(btn.dataset.tool)));
+      $('#fsUndo')?.addEventListener('click', undoCanvas);
+      $('#fsRedo')?.addEventListener('click', redoCanvas);
+
       useTool('select');
 
-      // text & sticky
+      // Draw/erase results
+      canvas.on('path:created', (e) => {
+        const p = e.path;
+        if (state.currentTool === 'erase') {
+          // Keep the eraser path (so changes stick) but make it non-interactive
+          p.selectable = false; p.evented = false; p.strokeUniform = true;
+          markDirty(); pushHistoryDebounced();
+          return;
+        }
+        p.set({
+          selectable:true, evented:true, hasControls:true, hasBorders:true,
+          hoverCursor:'move', fill:null, strokeUniform:true, erasable:true
+        });
+        p.set({ stroke: $('#brushColor').value || '#ffffff', strokeWidth: Number($('#brushSize').value || 3) });
+        markDirty(); pushHistoryDebounced();
+      });
+
+      // Text + Sticky placement
       canvas.on('mouse:down', (opt) => {
+        const target = opt.target;
         const pt = canvas.getPointer(opt.e);
+
         if (state.currentTool === 'text') {
-          const tb = new fabric.Textbox('', { left:pt.x, top:pt.y, width:320, fontSize:20, fill: $('#brushColor').value || '#fff',
-                                              backgroundColor:'rgba(255,255,255,0.05)', padding:8, erasable:true });
-          canvas.add(tb); canvas.setActiveObject(tb); tb.enterEditing(); markDirty();
-        } else if (state.currentTool === 'sticky') {
-          const st = new fabric.Textbox('', { left:pt.x, top:pt.y, width:260, fontSize:18, fill:'#1f2937',
-                                              backgroundColor:'#facc15', padding:10, rx:12, ry:12, erasable:true });
-          canvas.add(st); canvas.setActiveObject(st); st.enterEditing(); markDirty();
+          if (target && target.type === 'textbox') {
+            if (!target.isEditing) { canvas.setActiveObject(target); target.enterEditing(); target.hiddenTextarea?.focus(); }
+            return;
+          }
+          const tb = new fabric.Textbox('', { left: pt.x, top: pt.y, width: 320, fontSize: 20, editable: true,
+            fill: $('#brushColor').value || '#ffffff', backgroundColor: 'rgba(255,255,255,0.04)', padding: 8, cornerStyle:'circle', erasable: true });
+          canvas.add(tb); canvas.setActiveObject(tb); tb.enterEditing(); tb.hiddenTextarea?.focus(); canvas.requestRenderAll(); markDirty(); pushHistoryDebounced(); return;
+        }
+
+        if (state.currentTool === 'sticky') {
+          const sticky = new fabric.Textbox('', { left: pt.x, top: pt.y, width: 260, fontSize: 18, editable: true,
+            fill:'#1f2937', backgroundColor: '#facc15', padding: 10, rx: 12, ry: 12, cornerStyle:'circle', erasable: true });
+          canvas.add(sticky); canvas.setActiveObject(sticky); useTool('text'); sticky.enterEditing(); sticky.hiddenTextarea?.focus(); canvas.requestRenderAll(); markDirty(); pushHistoryDebounced(); return;
         }
       });
 
-      // controls
-      $('#brushSize').addEventListener('input', e => {
-        const sz = Number(e.target.value||3);
-        if (canvas.isDrawingMode) canvas.freeDrawingBrush.width = sz;
-        (canvas.getActiveObjects()||[]).forEach(o => { if (o.type==='path') o.set({strokeWidth:sz}); });
-        canvas.requestRenderAll();
+      // Wheel zoom
+      canvas.on('mouse:wheel', (opt) => {
+        const delta = opt.e.deltaY;
+        let zoom = state.zoom * (delta > 0 ? 0.95 : 1.05);
+        zoom = clamp(zoom, 0.1, 5);
+        const point = new fabric.Point(opt.e.offsetX, opt.e.offsetY);
+        canvas.zoomToPoint(point, zoom);
+        state.zoom = zoom;
+        $('#zoomLevel').value = Math.round(zoom * 100);
+        opt.e.preventDefault(); opt.e.stopPropagation();
       });
-      $('#brushColor').addEventListener('input', e => {
-        const col = e.target.value || '#ffffff';
-        if (state.currentTool !== 'erase' && canvas.freeDrawingBrush.color !== undefined) canvas.freeDrawingBrush.color = col;
-        (canvas.getActiveObjects()||[]).forEach(o => { if (o.type==='path') o.set({stroke:col}); if (/text/.test(o.type)) o.set({fill:col}); });
-        canvas.requestRenderAll();
-      });
-      $('#canvasBg').addEventListener('input', e => { $('#canvasHost').style.backgroundColor = e.target.value || '#0f0f11'; });
 
-      $('#clearCanvas').addEventListener('click', () => { if (confirm('Clear the canvas?')) { canvas.clear(); markDirty(); } });
+      // Space pan
+      function isEditingCanvasText(){
+        try{
+          const obj = canvas.getActiveObject && canvas.getActiveObject();
+          return !!(obj && (obj.isEditing === true || obj.isEditing));
+        } catch { return false; }
+      }
+      window.addEventListener('keydown', (e) => {
+        if (state.mode !== 'canvas') return;
+        if (isEditingCanvasText()) return;
+        const isMeta = e.ctrlKey || e.metaKey;
+        if (isMeta && e.key.toLowerCase() === 'z') { e.preventDefault(); return e.shiftKey ? redoCanvas() : undoCanvas(); }
+        if (e.code === 'Space' && !state.isSpacePanning) { state.isSpacePanning = true; canvas.isDragging = true; canvas.selection = false; canvas.lastPosX = 0; canvas.lastPosY = 0; }
+      });
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'Space') { state.isSpacePanning = false; canvas.isDragging = false; canvas.selection = (state.currentTool === 'select'); }
+      });
+      canvas.on('mouse:move', (opt) => {
+        if (canvas.isDragging) {
+          const v = canvas.viewportTransform;
+          if (v) { v[4] += opt.e.movementX; v[5] += opt.e.movementY; canvas.requestRenderAll(); }
+        }
+      });
+
+      // Controls
+      $('#brushSize').addEventListener('input', (e) => {
+        const sz = Number(e.target.value || 3);
+        if (canvas.isDrawingMode) canvas.freeDrawingBrush.width = sz;
+        const active = canvas.getActiveObjects();
+        if (active.length) {
+          active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); });
+          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
+        }
+        const fsBrush = document.getElementById('fsBrush'); if (fsBrush) fsBrush.value = String(sz);
+      });
+      function applyBrushColor(col){
+        try {
+          if (state.currentTool === 'erase') return;
+          if (canvas.freeDrawingBrush && canvas.freeDrawingBrush.color !== undefined) canvas.freeDrawingBrush.color = col;
+        } catch {}
+      }
+      $('#brushColor').addEventListener('input', (e) => {
+        const col = e.target.value || '#ffffff';
+        applyBrushColor(col);
+        const active = canvas.getActiveObjects();
+        if (active.length) {
+          active.forEach(o => {
+            if (o.type === 'path') o.set({ stroke: col });
+            else if (/text/.test(o.type)) o.set({ fill: col });
+            else if (o.type === 'group' && o._objects) o._objects.forEach(ch => { if (/text/.test(ch.type)) ch.set({ fill: col }); });
+          });
+          canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
+        }
+        const fsColor = document.getElementById('fsColor'); if (fsColor) fsColor.value = col;
+      });
+      const fsColor = document.getElementById('fsColor');
+      if (fsColor) {
+        try { fsColor.value = document.getElementById('brushColor').value || '#ffffff'; } catch {}
+        const onFsColor = (e) => {
+          const col = e.target.value || '#ffffff';
+          const bc = document.getElementById('brushColor'); if (bc) bc.value = col;
+          applyBrushColor(col);
+          const active = canvas.getActiveObjects();
+          if (active.length) {
+            active.forEach(o => { if (o.type === 'path') o.set({ stroke: col }); else if (/text/.test(o.type)) o.set({ fill: col }); });
+            canvas.requestRenderAll(); markDirty();
+          }
+        };
+        fsColor.addEventListener('input', onFsColor);
+        fsColor.addEventListener('change', onFsColor);
+      }
+      const fsBrush = document.getElementById('fsBrush');
+      if (fsBrush) {
+        try { fsBrush.value = document.getElementById('brushSize').value || '3'; } catch {}
+        fsBrush.addEventListener('input', (e) => {
+          const sz = Number(e.target.value || 3);
+          const main = document.getElementById('brushSize'); if (main) main.value = String(sz);
+          if (canvas.isDrawingMode) canvas.freeDrawingBrush.width = sz;
+          const active = canvas.getActiveObjects();
+          if (active.length) {
+            active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); });
+            canvas.requestRenderAll(); markDirty();
+          }
+        });
+      }
+
+      $('#clearCanvas').addEventListener('click', () => {
+        if (confirm('Clear the canvas?')) {
+          canvas.clear();
+          $('#canvasHost').style.backgroundColor = $('#canvasBg').value || '#0f0f11';
+          markDirty();
+        }
+      });
       $('#zoomIn').addEventListener('click', () => setZoom(state.zoom * 1.15));
       $('#zoomOut').addEventListener('click', () => setZoom(state.zoom / 1.15));
-      $('#centerCanvas').addEventListener('click', () => { state.zoom=1; canvas.setViewportTransform([1,0,0,1,0,0]); canvas.requestRenderAll(); $('#zoomLevel').value=100; });
-      $('#zoomLevel').addEventListener('change', e => setZoom(clamp((Number(e.target.value)||100)/100, 0.1, 5)));
-      function setZoom(z){ state.zoom=clamp(z,0.1,5); const p=new fabric.Point(canvas.getWidth()/2, canvas.getHeight()/2); canvas.zoomToPoint(p,state.zoom); $('#zoomLevel').value=Math.round(state.zoom*100); }
+      $('#centerCanvas').addEventListener('click', resetViewport);
+      $('#zoomLevel').addEventListener('change', (e) => setZoom(clamp((Number(e.target.value)||100)/100, 0.1, 5)));
+      function setZoom(z){ state.zoom = clamp(z, 0.1, 5); const c = new fabric.Point(canvas.getWidth()/2, canvas.getHeight()/2); canvas.zoomToPoint(c, state.zoom); $('#zoomLevel').value = Math.round(state.zoom*100); }
+      function resetViewport(){ state.zoom = 1; canvas.setViewportTransform([1,0,0,1,0,0]); $('#zoomLevel').value = 100; canvas.requestRenderAll(); }
 
-      // grid overlay
-      canvas.on('after:render', () => {
-        if (!state.grid.show) return;
-        const ctx = canvas.getContext(), zoom = canvas.getZoom(), size = state.grid.size * zoom;
-        ctx.save(); ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1;
-        for (let x=0; x<canvas.getWidth(); x+=size){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.getHeight()); ctx.stroke(); }
-        for (let y=0; y<canvas.getHeight(); y+=size){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.getWidth(),y); ctx.stroke(); }
-        ctx.restore();
-      });
-      $('#gridToggle').addEventListener('change', e => { state.grid.show = e.target.checked; canvas.requestRenderAll(); });
-      $('#snapToggle').addEventListener('change', e => { state.grid.snap = e.target.checked; });
-      $('#gridSize').addEventListener('change', e => { state.grid.size = clamp(Number(e.target.value)||24, 4, 200); canvas.requestRenderAll(); });
+      // Fullscreen toggle (unchanged)
+      function isFullscreen(){ return document.body.classList.contains('fs-canvas-on'); }
+      function enterFS(){ try { setMode && setMode('canvas'); } catch {} document.body.classList.add('fs-canvas-on','fs-active'); $('#fsToolbarExit').textContent='Exit'; resize(); }
+      function exitFS(){ document.body.classList.remove('fs-canvas-on','fs-active'); $('#fsToolbarExit').textContent='Full'; resize(); }
+      function toggleFS(){ isFullscreen() ? exitFS() : enterFS(); }
+      $('#fsToolbarExit')?.addEventListener('click', toggleFS);
+      window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isFullscreen()) { e.preventDefault(); exitFS(); } });
 
-      // snap on move
-      function maybeSnap(target){
-        if (!state.grid.snap) return;
-        const gs = state.grid.size;
-        target.set({ left: Math.round(target.left/gs)*gs, top: Math.round(target.top/gs)*gs });
-      }
-      canvas.on('object:moving', e => maybeSnap(e.target));
-      canvas.on('object:scaling', e => maybeSnap(e.target));
+      // Grid & BG
+      $('#gridToggle').addEventListener('change', (e) => { state.grid.show = e.target.checked; canvas.requestRenderAll(); });
+      $('#snapToggle').addEventListener('change', (e) => { state.grid.snap = e.target.checked; });
+      $('#gridSize').addEventListener('change', (e) => { state.grid.size = clamp(Number(e.target.value)||24, 4, 200); canvas.requestRenderAll(); });
+      $('#canvasBg').addEventListener('input', (e) => { $('#canvasHost').style.backgroundColor = e.target.value || '#0f0f11'; markDirty(); pushHistoryDebounced(); });
+
+      // Start history
+      pushHistory();
     }
 
-    /*************** Modes & UI wiring ***************/
-    function setMode(m){
+    /* =============== MODE TOGGLE =============== */
+    function setMode(m) {
       state.mode = m;
       $('#docPanel').classList.toggle('hidden', m!=='doc');
       $('#canvasPanel').classList.toggle('hidden', m!=='canvas');
       $('#settingsPanel').classList.toggle('hidden', m!=='settings');
+
       $('#modeDoc').classList.toggle('bg-white/10', m==='doc');
       $('#modeCanvas').classList.toggle('bg-white/10', m==='canvas');
       $('#modeSettings').classList.toggle('bg-white/10', m==='settings');
-      if (m==='doc') fitDoc();
+
+      if (m==='doc') { try { window.ocFitDoc && window.ocFitDoc(); } catch {} }
+      if (m==='canvas') {
+        state.canvas && state.canvas.requestRenderAll();
+        if (window.innerWidth <= 1024 && !document.body.classList.contains('fs-canvas-on')) {
+          document.body.classList.add('fs-canvas-on','fs-active');
+          $('#fsToolbarExit').textContent = 'Exit';
+        }
+      }
     }
 
-    function fitDoc(){
-      const wrap = $('#pageWrap'), page = $('#page');
-      const header = document.querySelector('header');
-      const tb = $('#quillToolbar');
-      const titleSec = $('#docTitle')?.closest('section');
-      const availH = Math.max(400, window.innerHeight - (header?.offsetHeight||0) - (tb?.offsetHeight||0) - (titleSec?.offsetHeight||0) - 48);
-      const availW = Math.max(320, wrap.clientWidth);
-      const scale = Math.min(availW/816, availH/1056, 1);
-      page.style.transform = `scale(${scale})`;
-      wrap.style.minHeight = Math.ceil(1056*scale + 24) + 'px';
-    }
-
-    /*************** History / Save / Export ***************/
-    function getSnapshot(){
+    /* =============== SNAPSHOTS / SAVE / LOAD =============== */
+    function getSnapshot() {
       const title = ($('#docTitle').value || '').trim() || 'Untitled note';
       const docHTML = state.quill ? state.quill.root.innerHTML : '';
-      let canvasJSON=null, canvasPNG=null, canvasBG=$('#canvasBg')?.value || '#0f0f11';
-      if (state.canvas){
+      let canvasJSON = null, canvasPNG = null, canvasBG = $('#canvasHost').style.backgroundColor || '#0f0f11';
+      if (state.canvas) {
         canvasJSON = state.canvas.toJSON(['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation']);
-        try{ canvasPNG = state.canvas.toDataURL({ format:'png', multiplier:2, quality:1.0 }); } catch{}
+        try { canvasPNG = state.canvas.toDataURL({ format:'png', multiplier: 2, quality: 1.0 }); } catch { canvasPNG = null; }
       }
-      return { id:state.id, title, updatedAt:new Date().toISOString(), docHTML, canvasJSON, canvasPNG, canvasBG, version:7 };
+      return { id: state.id, title, updatedAt: nowISO(), docHTML, canvasJSON, canvasPNG, canvasBG, version: 6 };
     }
-    function applySnapshot(snap){
+    function applySnapshot(snap) {
       state.id = snap.id || uid();
       $('#docTitle').value = snap.title || 'Untitled note';
       if (state.quill) state.quill.root.innerHTML = snap.docHTML || '';
-      if (state.canvas && snap.canvasJSON){
-        state.canvas.loadFromJSON(snap.canvasJSON, ()=> state.canvas.requestRenderAll());
-        $('#canvasHost').style.backgroundColor = snap.canvasBG || '#0f0f11';
+      if (state.canvas && snap.canvasJSON) {
+        state.suppressHistory = true;
+        state.canvas.loadFromJSON(snap.canvasJSON, () => {
+          $('#canvasHost').style.backgroundColor = snap.canvasBG || '#0f0f11';
+          state.canvas.requestRenderAll();
+          try {
+            const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
+            const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: $('#canvasHost').style.backgroundColor || '#0f0f11' };
+            state.hist.stack = [initial]; state.hist.idx = 0;
+          } catch {}
+          state.suppressHistory = false;
+        });
       }
-      clearDirty(); refreshHistoryUI(); refreshSidebarUI();
+      clearDirty();
+      refreshSidebarUI();
     }
-    function saveDocument(){ store.upsert(getSnapshot()); clearDirty(); flash('Saved'); refreshHistoryUI(); refreshSidebarUI(); }
-    function newDocument(){
+    function newDocument() {
       if (state.dirty && !confirm('Discard unsaved changes?')) return;
-      state.id = uid(); $('#docTitle').value='Untitled note'; state.quill && (state.quill.root.innerHTML='');
-      state.canvas && state.canvas.clear(); clearDirty(); const s=getSnapshot(); store.upsert(s);
+      state.id = uid();
+      $('#docTitle').value = 'Untitled note';
+      state.quill?.root && (state.quill.root.innerHTML = '');
+      if (state.canvas) {
+        state.canvas.clear();
+        $('#canvasHost').style.backgroundColor = $('#canvasBg').value || '#0f0f11';
+        try {
+          const SAVE_PROPS = ['selectable','evented','stroke','strokeWidth','fill','fontSize','backgroundColor','padding','rx','ry','strokeUniform','globalCompositeOperation','eraser'];
+          const initial = { json: state.canvas.toJSON(SAVE_PROPS), bg: $('#canvasHost').style.backgroundColor || '#0f0f11' };
+          state.hist.stack = [initial]; state.hist.idx = 0;
+        } catch {}
+      }
+      clearDirty();
+      const snap = getSnapshot(); store.upsert(snap);
       refreshHistoryUI(); refreshSidebarUI();
     }
-    function importProject(file){
+    function saveDocument() { store.upsert(getSnapshot()); clearDirty(); flash('Saved'); refreshHistoryUI(); refreshSidebarUI(); }
+    const autoSave = debounce(() => { if (state.dirty) saveDocument(); }, 1500);
+
+    function openFromChooser(){ $('#openFile').click(); }
+    function importProject(file) {
       const reader = new FileReader();
-      reader.onload = ()=>{ try{ applySnapshot(JSON.parse(reader.result)); saveDocument(); }catch{ alert('Invalid file.'); } };
+      reader.onload = () => {
+        try { const data = JSON.parse(reader.result); applySnapshot(data); saveDocument(); }
+        catch(e){ alert('Invalid file.'); }
+      };
       reader.readAsText(file);
     }
 
-    function buildStandaloneHTML(snap){
-      const css = `body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;margin:40px;line-height:1.6;}
-      h1{font-size:28px;margin:0 0 16px;} h2{font-size:20px;margin:24px 0 8px;}
-      .doc{font-size:16px;} img.canvas-shot{max-width:100%;height:auto;margin:16px 0;border:1px solid #e5e5e5;border-radius:8px;}
-      .ql-align-center{text-align:center}.ql-align-right{text-align:right}.ql-align-justify{text-align:justify}`;
-      const doc = `<div class="doc">${snap.docHTML||''}</div>`;
-      const canvas = snap.canvasPNG ? `<h2>Canvas</h2><img class="canvas-shot" src="${snap.canvasPNG}" alt="Canvas" />` : '';
-      return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${(snap.title||'Note').replace(/[&<>"]/g,'')}</title><style>${css}</style></head><body><h1>${(snap.title||'Note').replace(/[&<>"]/g,'')}</h1>${doc}${canvas}</body></html>`;
-    }
-    async function exportDocx(){ const snap=getSnapshot(); const html=buildStandaloneHTML(snap); let blob=window.htmlDocx.asBlob(html); if (!blob.type) blob=new Blob([blob],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}); downloadBlob(blob, safeName(snap.title)+'.docx'); }
-    async function exportPDF(){ const snap=getSnapshot(); const html=buildStandaloneHTML(snap); await html2pdf().set({ margin:[10,10,10,10], filename:safeName(snap.title)+'.pdf', image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2, useCORS:true}, jsPDF:{unit:'mm',format:'letter',orientation:'portrait'} }).from(html).save(); }
-    function exportHTML(){ const snap=getSnapshot(); const html=buildStandaloneHTML(snap); downloadBlob(new Blob([html],{type:'text/html;charset=utf-8'}), safeName(snap.title)+'.html'); }
-    function exportJSON(){ const snap=getSnapshot(); downloadBlob(new Blob([JSON.stringify(snap,null,2)],{type:'application/json'}), safeName(snap.title)+'.ocnote'); }
-    function safeName(n){ return (n||'note').replace(/[^a-z0-9\-]+/gi,'_'); }
-    async function downloadBlob(blob, filename){ const a=document.createElement('a'); const url=URL.createObjectURL(blob); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 3000); }
-
-    function refreshHistoryUI(){
-      const list = store.loadAll(); const q = ($('#searchHistory')?.value||'').toLowerCase();
-      const holder = $('#historyList'); if (!holder) return; holder.innerHTML='';
-      list.filter(x => !q || (x.title?.toLowerCase().includes(q) || (x.docHTML||'').toLowerCase().includes(q))).forEach(item=>{
-        const row = document.createElement('div');
-        row.className = 'glass rounded-xl border p-3'; row.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
-        row.innerHTML = `<div class="flex items-center justify-between gap-3">
-          <div class="min-w-0"><div class="font-medium truncate">${item.title||'Untitled'}</div><div class="text-xs" style="color:var(--muted)">${niceDate(item.updatedAt)}</div></div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <button class="px-2 py-1 glass-2 rounded-lg text-xs border" data-open="${item.id}" style="border-color:var(--line)">Open</button>
-            <button class="px-2 py-1 glass-2 rounded-lg text-xs border" data-dl="${item.id}" style="border-color:var(--line)">Export</button>
-          </div></div>`;
-        holder.appendChild(row);
-      });
-      holder.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => {
-        const id = b.getAttribute('data-open'); const item = store.loadAll().find(x=>x.id===id); item && applySnapshot(item);
-        $('#historyDrawer').classList.add('hidden'); document.body.style.overflow='';
-      }));
-      holder.querySelectorAll('[data-dl]').forEach(b => b.addEventListener('click', () => {
-        const id = b.getAttribute('data-dl'); const item = store.loadAll().find(x=>x.id===id);
-        if (item) downloadBlob(new Blob([JSON.stringify(item,null,2)], {type:'application/json'}), safeName(item.title)+'.ocnote');
-      }));
-    }
-    function refreshSidebarUI(){
-      const list = store.loadAll(); const q = ($('#sidebarSearch')?.value||'').toLowerCase();
-      const holder = $('#sidebarList'); if (!holder) return; holder.innerHTML='';
-      const currentId = state.id;
-      list.filter(x => !q || (x.title?.toLowerCase().includes(q) || (x.docHTML||'').toLowerCase().includes(q))).forEach(item=>{
-        const row=document.createElement('div'); row.className='glass-2 rounded-xl border p-3 cursor-pointer'; row.style.borderColor=getComputedStyle(document.body).getPropertyValue('--line');
-        if (item.id===currentId) row.style.outline='1px solid var(--line)';
-        row.innerHTML = `<div class="text-sm font-medium truncate">${item.title||'Untitled'}</div><div class="text-[11px]" style="color:var(--muted)">${niceDate(item.updatedAt)}</div>`;
-        row.addEventListener('click', ()=> applySnapshot(item));
-        holder.appendChild(row);
-      });
+    /* =============== EXPORT BUILDERS =============== */
+    function buildStandaloneHTML(snap) {
+      const css = `
+        meta[charset]{}
+        body{ font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#111; margin:40px; line-height:1.6; }
+        h1{ font-size:28px; margin:0 0 16px; }
+        h2{ font-size:20px; margin:24px 0 8px; }
+        .doc{ font-size:16px; }
+        img.canvas-shot{ max-width:100%; height:auto; margin:16px 0; border:1px solid #e5e5e5; border-radius:8px; }
+        .hr{ height:1px; background:#e5e5e5; margin:24px 0; }
+        .ql-align-center{text-align:center} .ql-align-right{text-align:right} .ql-align-justify{text-align:justify}
+        .ql-indent-1{margin-left:3em} .ql-indent-2{margin-left:6em} .ql-indent-3{margin-left:9em}
+      `;
+      const docWrapped = `<div class="doc">${snap.docHTML || ''}</div>`;
+      const canvasPart = snap.canvasPNG ? `<div class="hr"></div><h2>Canvas</h2><img class="canvas-shot" src="${snap.canvasPNG}" alt="Canvas snapshot" />` : '';
+      return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(snap.title)}</title><style>${css}</style></head><body>
+        <h1>${escapeHtml(snap.title)}</h1>
+        ${docWrapped}
+        ${canvasPart}
+      </body></html>`;
     }
 
-    /*************** Menus & wiring ***************/
-    function wireMenus(){
-      const expBtn = $('#exportBtn'), expMenu = $('#exportMenu');
-      function openExportMenu(){
-        expMenu.innerHTML = `
-          <button class="block w-full text-left px-3 py-2 border-b" style="border-color:var(--line)" data-k="docx">Export .docx (Word)</button>
-          <button class="block w-full text-left px-3 py-2 border-b" style="border-color:var(--line)" data-k="pdf">Export .pdf</button>
-          <button class="block w-full text-left px-3 py-2 border-b" style="border-color:var(--line)" data-k="html">Export .html</button>
-          <button class="block w-full text-left px-3 py-2" data-k="json">Export project (.ocnote)</button>`;
-        expMenu.classList.remove('hidden');
-        requestAnimationFrame(()=> {
-          const r = expBtn.getBoundingClientRect();
-          const w = expMenu.getBoundingClientRect().width || 224;
-          const left = Math.min(Math.max(12, r.right - w), window.innerWidth - w - 12);
-          expMenu.style.top = (r.bottom + 8) + 'px';
-          expMenu.style.left = left + 'px';
+    /* =============== EXPORT ACTIONS =============== */
+    async function exportDocx() {
+      try {
+        const snap = getSnapshot();
+        const html = buildStandaloneHTML(snap);
+        let blob = window.htmlDocx.asBlob(html, {
+          orientation: 'portrait',
+          margins: { top: 720, right: 720, bottom: 720, left: 720 }
         });
+        if (!blob.type || blob.type === 'application/octet-stream') {
+          blob = new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        }
+        await downloadBlob(blob, safeFileName(snap.title)+'.docx');
+        flash('Exported .docx');
+      } catch (err) {
+        console.error('DOCX export failed', err);
+        alert('DOCX export failed. Error: ' + (err?.message || err));
       }
-      function closeExportMenu(){ expMenu.classList.add('hidden'); }
-      expBtn.addEventListener('click', e => { e.stopPropagation(); expMenu.classList.contains('hidden') ? openExportMenu() : closeExportMenu(); });
-      document.addEventListener('click', () => closeExportMenu());
-      document.addEventListener('keydown', e => { if (e.key==='Escape') closeExportMenu(); });
-      expMenu.addEventListener('click', ev => {
-        const k = ev.target.getAttribute('data-k'); if (!k) return; closeExportMenu();
-        if (k==='docx') exportDocx(); if (k==='pdf') exportPDF(); if (k==='html') exportHTML(); if (k==='json') exportJSON();
-      });
+    }
+    async function exportPDF() {
+      const snap = getSnapshot();
+      const html = buildStandaloneHTML(snap);
+      await html2pdf().set({
+        margin: [10,10,10,10],
+        filename: safeFileName(snap.title)+'.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+      }).from(html).save();
+      flash('Exported .pdf');
+    }
+    function exportHTML() {
+      const snap = getSnapshot();
+      const html = buildStandaloneHTML(snap);
+      const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+      downloadBlob(blob, safeFileName(snap.title)+'.html');
+      flash('Exported .html');
+    }
+    function exportJSON() {
+      const snap = getSnapshot();
+      const blob = new Blob([JSON.stringify(snap,null,2)], {type:'application/json'});
+      downloadBlob(blob, safeFileName(snap.title)+'.ocnote');
+      flash('Exported .ocnote');
+    }
 
-      // history drawer
-      $('#menuBtn')?.addEventListener('click', ()=>{ $('#historyDrawer').classList.remove('hidden'); document.body.style.overflow='hidden'; refreshHistoryUI(); });
-      $$('#historyDrawer [data-close-history]').forEach(el => el.addEventListener('click', ()=>{ $('#historyDrawer').classList.add('hidden'); document.body.style.overflow=''; }));
+    /* =============== HISTORY UI =============== */
+    function openHistory(){ $('#historyDrawer').classList.remove('hidden'); document.body.style.overflow='hidden'; refreshHistoryUI(); }
+    function closeHistory(){ $('#historyDrawer').classList.add('hidden'); document.body.style.overflow=''; }
+    function refreshHistoryUI() {
+      const list = store.loadAll();
+      const q = ($('#searchHistory').value || '').toLowerCase();
+      const holder = $('#historyList'); holder.innerHTML = '';
+      list.filter(item => !q || (item.title?.toLowerCase().includes(q) || (item.docHTML||'').toLowerCase().includes(q)))
+          .forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'glass rounded-xl border p-3 hover:bg-white/10 transition';
+            row.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
+            row.innerHTML = `
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="font-medium truncate" style="color:var(--text)">${escapeHtml(item.title||'Untitled')}</div>
+                  <div class="text-xs" style="color:var(--muted)">${niceDate(item.updatedAt)}</div>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <button class="px-2 py-1 glass-2 hover:bg-white/20 rounded-lg text-xs border" data-open-id="${item.id}" style="border-color:var(--line)">Open</button>
+                  <button class="px-2 py-1 glass-2 hover:bg-white/20 rounded-lg text-xs border" data-download-id="${item.id}" style="border-color:var(--line)">Export .ocnote</button>
+                </div>
+              </div>`;
+            holder.appendChild(row);
+          });
+      holder.querySelectorAll('[data-open-id]').forEach(btn => btn.addEventListener('click', (e) => {
+        e.stopPropagation(); const id = btn.getAttribute('data-open-id');
+        const item = store.loadAll().find(x => x.id===id);
+        if (item){ applySnapshot(item); closeHistory(); }
+      }));
+      holder.querySelectorAll('[data-download-id]').forEach(btn => btn.addEventListener('click', (e) => {
+        e.stopPropagation(); const id = btn.getAttribute('data-download-id');
+        const item = store.loadAll().find(x => x.id===id);
+        if (item){
+          const blob = new Blob([JSON.stringify(item,null,2)], {type:'application/json'});
+          downloadBlob(blob, safeFileName(item.title)+'.ocnote');
+        }
+      }));
+    }
 
-      // top actions
-      $('#newBtn').addEventListener('click', newDocument);
-      $('#openBtn').addEventListener('click', ()=> $('#openFile').click());
-      $('#openFile').addEventListener('change', e => { const f=e.target.files?.[0]; if (f) importProject(f); e.target.value=''; });
-      $('#saveBtn').addEventListener('click', saveDocument);
+    /* =============== SIDEBAR UI (Desktop) =============== */
+    function refreshSidebarUI() {
+      const list = store.loadAll();
+      const q = ($('#sidebarSearch').value || '').toLowerCase();
+      const holder = $('#sidebarList'); if (!holder) return; holder.innerHTML = '';
+      const currentId = state.id;
+      list.filter(item => !q || (item.title?.toLowerCase().includes(q) || (item.docHTML||'').toLowerCase().includes(q)))
+          .forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'note-row glass-2 rounded-xl border p-3 transition';
+            row.style.borderColor = getComputedStyle(document.body).getPropertyValue('--line');
+            if (item.id === currentId) row.classList.add('active');
+            row.innerHTML = `
+              <div class="text-sm font-medium truncate" style="color:var(--text)">${escapeHtml(item.title||'Untitled')}</div>
+              <div class="text-[11px] mt-0.5" style="color:var(--muted)">${niceDate(item.updatedAt)}</div>
+            `;
+            row.addEventListener('click', () => { applySnapshot(item); refreshSidebarUI(); });
+            holder.appendChild(row);
+          });
+    }
 
-      $('#modeDoc').addEventListener('click', ()=> setMode('doc'));
-      $('#modeCanvas').addEventListener('click', ()=> setMode('canvas'));
-      $('#modeSettings').addEventListener('click', ()=> setMode('settings'));
-      $('#themeBtn').addEventListener('click', toggleTheme);
+    /* =============== MENUS / SHORTCUTS =============== */
+    function wireMenus() {
+      const expBtn = $('#exportBtn'), expMenu = $('#exportMenu');
+      const closeMenus = () => { expMenu.classList.add('hidden'); expBtn.setAttribute('aria-expanded','false'); };
+      expBtn.addEventListener('click', (e) => { e.stopPropagation(); const hidden = expMenu.classList.toggle('hidden'); expBtn.setAttribute('aria-expanded', (!hidden).toString()); });
+      document.addEventListener('click', (e) => { if (!expBtn.contains(e.target) && !expMenu.contains(e.target)) closeMenus(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+      expMenu.querySelectorAll('[data-export]').forEach(btn => btn.addEventListener('click', () => {
+        closeMenus();
+        const k = btn.getAttribute('data-export');
+        if (k==='docx') exportDocx();
+        if (k==='pdf')  exportPDF();
+        if (k==='html') exportHTML();
+        if (k==='json') exportJSON();
+      }));
 
-      $('#sbNew')?.addEventListener('click', newDocument);
-      $('#drawerNew')?.addEventListener('click', newDocument);
-      $('#searchHistory')?.addEventListener('input', ()=> refreshHistoryUI());
-      $('#sidebarSearch')?.addEventListener('input', ()=> refreshSidebarUI());
+      // History open/close
+      $$('#historyDrawer [data-close-history]').forEach(el => el.addEventListener('click', closeHistory));
+      const menuBtn = document.getElementById('menuBtn'); if (menuBtn) menuBtn.addEventListener('click', openHistory);
 
-      window.addEventListener('keydown', e => {
-        const meta = e.ctrlKey || e.metaKey;
-        if (meta && e.key.toLowerCase()==='s'){ e.preventDefault(); saveDocument(); }
-        if (meta && e.key.toLowerCase()==='p'){ e.preventDefault(); exportPDF(); }
+      // Sidebar & Drawer new button
+      const sbNew = document.getElementById('sbNew'); if (sbNew) sbNew.addEventListener('click', newDocument);
+      const drawerNew = document.getElementById('drawerNew'); if (drawerNew) drawerNew.addEventListener('click', newDocument);
+
+      // Drawer export quick actions
+      $$('#historyDrawer [data-drawer-export]').forEach(btn => btn.addEventListener('click', () => {
+        const k = btn.getAttribute('data-drawer-export');
+        if (k==='docx') exportDocx();
+        if (k==='pdf')  exportPDF();
+        if (k==='html') exportHTML();
+        if (k==='json') exportJSON();
+      }));
+    }
+    function wireShortcuts() {
+      window.addEventListener('keydown', (e) => {
+        const isMeta = e.ctrlKey || e.metaKey;
+        if (isMeta && e.key.toLowerCase()==='s'){ e.preventDefault(); saveDocument(); }
+        if (isMeta && e.key.toLowerCase()==='p'){ e.preventDefault(); exportPDF(); }
       });
     }
 
-    /*************** Settings ***************/
+    /* =============== SETTINGS =============== */
     function applySettingsToUI(){
-      document.documentElement.style.setProperty('--mobile-side-pad', (state.settings.mobileSidePad || 12)+'px');
+      document.documentElement.style.setProperty('--mobile-side-pad', (state.settings.mobileSidePad||12) + 'px');
       document.documentElement.style.setProperty('--toolbar-gap', state.settings.density==='compact' ? '4px' : '6px');
     }
     function wireSettings(){
       const range = $('#setMobilePad'), num = $('#setMobilePadNumber');
-      range.value = String(state.settings.mobileSidePad); num.value = String(state.settings.mobileSidePad);
-      range.addEventListener('input', ()=>{ num.value=range.value; state.settings.mobileSidePad=Number(range.value); applySettingsToUI(); fitDoc(); });
-      num.addEventListener('input', ()=>{ const v=clamp(Number(num.value)||12,8,28); range.value=String(v); state.settings.mobileSidePad=v; applySettingsToUI(); fitDoc(); });
-      $('#densityCozy').addEventListener('click', ()=>{ state.settings.density='cozy'; applySettingsToUI(); });
-      $('#densityCompact').addEventListener('click', ()=>{ state.settings.density='compact'; applySettingsToUI(); });
-      $('#settingsApply').addEventListener('click', ()=>{ store.saveSettings(state.settings); flash('Settings saved'); });
-      $('#settingsBack').addEventListener('click', ()=> setMode('doc'));
+      range.value = String(state.settings.mobileSidePad||12);
+      num.value = String(state.settings.mobileSidePad||12);
+      range.addEventListener('input', ()=>{ num.value=range.value; state.settings.mobileSidePad=Number(range.value); applySettingsToUI(); try{ window.ocFitDoc && window.ocFitDoc(); }catch{} });
+      num.addEventListener('input', ()=>{ const v=clamp(Number(num.value)||12,8,28); range.value=String(v); state.settings.mobileSidePad=v; applySettingsToUI(); try{ window.ocFitDoc && window.ocFitDoc(); }catch{} });
+
+      $('#densityCozy')?.addEventListener('click', ()=>{ state.settings.density='cozy'; applySettingsToUI(); });
+      $('#densityCompact')?.addEventListener('click', ()=>{ state.settings.density='compact'; applySettingsToUI(); });
+
+      $('#settingsApply')?.addEventListener('click', ()=>{ store.saveSettings(state.settings); flash('Settings saved'); });
+      $('#settingsBack')?.addEventListener('click', ()=> setMode('doc'));
     }
 
-    /*************** Boot ***************/
-    function boot(){
-      applyTheme(store.loadTheme() || 'dark');
-      applySettingsToUI();
+    /* =============== BOOT =============== */
+    function boot() {
+      try { applyTheme(store.loadTheme() || 'dark'); } catch {}
+      try { applySettingsToUI(); } catch {}
 
-      // Each step isolated so one failure doesn’t kill the UI
-      try { initQuill(); } catch(e){ console.error(e); flash('Editor failed to load — check console'); }
-      try { initCanvas(); } catch(e){ console.error(e); flash('Canvas failed to load — check console'); }
+      // init pieces independently so one failure doesn't kill UI
+      try { initQuill(); } catch (e) { console.error('Quill init failed', e); flash('Editor failed to load — see console'); }
+      try { initCanvas(); } catch (e) { console.error('Canvas init failed', e); flash('Canvas failed to load — see console'); }
 
-      wireMenus(); wireSettings();
-      setMode('doc'); refreshHistoryUI(); refreshSidebarUI(); fitDoc();
+      // header controls
+      $('#modeDoc')?.addEventListener('click', () => setMode('doc'));
+      $('#modeCanvas')?.addEventListener('click', () => setMode('canvas'));
+      $('#modeSettings')?.addEventListener('click', () => setMode('settings'));
 
-      // autosave on blur / interval
-      window.addEventListener('beforeunload', ()=>{ if (state.dirty) try{ store.upsert(getSnapshot()); }catch{} });
+      $('#newBtn')?.addEventListener('click', newDocument);
+      $('#saveBtn')?.addEventListener('click', saveDocument);
+
+      $('#openBtn')?.addEventListener('click', openFromChooser);
+      $('#openFile')?.addEventListener('change', (e) => { const f = e.target.files?.[0]; if (f) importProject(f); e.target.value=''; });
+
+      $('#themeBtn')?.addEventListener('click', toggleTheme);
+
+      // history & sidebar wiring
+      $('#searchHistory')?.addEventListener('input', debounce(refreshHistoryUI, 120));
+      $('#sidebarSearch')?.addEventListener('input', debounce(refreshSidebarUI, 120));
+
+      // title dirty tracking
+      const titleEl = $('#docTitle');
+      titleEl?.addEventListener('input', markDirty);
+      titleEl?.addEventListener('focus', () => { if (titleEl.value.trim() === 'Untitled note') { titleEl.value = ''; } });
+
+      wireMenus(); wireShortcuts(); wireSettings();
+
+      // autosave on idle, visibility change, and every 30s
       setInterval(()=>{ if (state.dirty) saveDocument(); }, 30000);
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && state.dirty) { try { const snap = getSnapshot(); store.upsert(snap); clearDirty(); } catch {} } });
+      window.addEventListener('beforeunload', () => { if (state.dirty) { try { const snap = getSnapshot(); store.upsert(snap); } catch {} } });
 
-      // Title edits mark dirty
-      $('#docTitle').addEventListener('input', markDirty);
+      setMode('doc');
+      refreshHistoryUI();
+      refreshSidebarUI();
 
-      window.addEventListener('resize', ()=> requestAnimationFrame(fitDoc));
+      // measure header height to position sidebar
+      const header = document.querySelector('header');
+      if (header) document.documentElement.style.setProperty('--topbar-h', header.offsetHeight + 'px');
+
+      // sidebar open/close state
+      state.sidebarOpen = store.loadSidebarOpen();
+      const applySidebarPadding = () => {
+        const wide = window.innerWidth >= 1024;
+        if (wide && state.sidebarOpen) {
+          document.body.classList.add('with-sidebar');
+          document.body.classList.remove('sidebar-collapsed');
+        } else {
+          document.body.classList.remove('with-sidebar');
+          document.body.classList.add('sidebar-collapsed');
+        }
+      };
+      applySidebarPadding();
+      window.addEventListener('resize', debounce(() => { applySidebarPadding(); fitDoc(); }, 120));
+
+      const sbToggle = document.getElementById('toggleSidebar');
+      if (sbToggle) sbToggle.addEventListener('click', () => { state.sidebarOpen = !state.sidebarOpen; store.saveSidebarOpen(state.sidebarOpen); applySidebarPadding(); fitDoc(); });
+
+      // Ensure page fits viewport like Word (always one 8.5x11 on screen)
+      function fitDoc(){
+        const wrap = document.getElementById('pageWrap'); if (!wrap) return;
+        const page = document.getElementById('page'); if (!page) return;
+        const headerEl = document.querySelector('header');
+        const tb = document.getElementById('quillToolbar');
+        const titleSec = document.getElementById('docTitle')?.closest('section');
+        const hH = headerEl?.offsetHeight || 0;
+        const tH = tb?.offsetHeight || 0;
+        const titleH = titleSec?.offsetHeight || 0;
+        const availH = Math.max(400, window.innerHeight - hH - tH - titleH - 48);
+        const availW = Math.max(320, wrap.clientWidth);
+        const scale = Math.min(availW / 816, availH / 1056, 1);
+        state.docScale = scale;
+        page.style.left = '';
+        page.style.transform = `scale(${scale})`;
+        wrap.style.minHeight = Math.ceil(1056 * scale + 24) + 'px';
+      }
+      fitDoc();
+      window.ocFitDoc = fitDoc;
+      window.addEventListener('resize', debounce(fitDoc, 150));
+
+      // Service worker (no change)
+      if ('serviceWorker' in navigator) {
+        try { navigator.serviceWorker.register('./sw.js'); } catch(e) { console.warn('SW registration failed', e); }
+      }
     }
 
-    document.addEventListener('DOMContentLoaded', boot);
+    document.addEventListener('DOMContentLoaded', () => {
+      try { boot(); } catch(e) { console.error(e); alert('Boot error: ' + (e?.message||e)); }
+    });
   </script>
+
+  <!-- Mobile bottom bar -->
+  <nav class="mobile-bar fixed left-1/2 -translate-x-1/2 bottom-3 safe-pad-bottom px-2 py-1.5 glass border rounded-2xl shadow-lg flex items-center gap-1 z-[70]" style="border-color:var(--line); display:none">
+    <button id="mbNew" class="px-2 py-1.5 text-sm rounded-xl hover:bg-white/10 flex items-center" aria-label="New">
+      <span class="plus-glow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+    </button>
+    <button id="mbMode" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="Toggle mode">Doc</button>
+    <button id="mbTheme" class="px-3 py-2 text-sm rounded-xl hover:bg-white/10" aria-label="Toggle theme">☀︎/🌙</button>
+  </nav>
 </body>
 </html>
