@@ -387,6 +387,7 @@
           <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="text">Text</button>
           <button class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border tool" style="border-color:var(--line)" data-tool="draw">Pen</button>
           <input id="fsColor" type="color" class="w-7 h-7 p-0 bg-transparent border rounded-lg ml-1" style="border-color:var(--line)" title="Text/Brush Color" />
+          <input id="fsBrush" type="range" min="1" max="24" value="3" class="ml-1 align-middle" title="Pen Thickness" style="width:90px" />
         </div>
         <canvas id="ocCanvas"></canvas>
       </div>
@@ -762,8 +763,15 @@
       });
 
       // keybinds
+      function isEditingCanvasText(){
+        try{
+          const obj = canvas.getActiveObject && canvas.getActiveObject();
+          return !!(obj && (obj.isEditing === true || obj.isEditing));
+        } catch { return false; }
+      }
       window.addEventListener('keydown', (e) => {
         if (state.mode !== 'canvas') return;
+        if (isEditingCanvasText()) return; // don't hijack typing while editing text/sticky
         const k = e.key.toLowerCase();
         if (k === 'v') useTool('select');
         if (k === 'p') useTool('draw');
@@ -818,6 +826,7 @@
           active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); });
           canvas.requestRenderAll(); markDirty();
         }
+        const fsBrush = document.getElementById('fsBrush'); if (fsBrush) fsBrush.value = String(sz);
       });
       $('#brushColor').addEventListener('input', (e) => {
         const col = e.target.value || '#ffffff';
@@ -841,6 +850,20 @@
           const active = canvas.getActiveObjects();
           if (active.length) {
             active.forEach(o => applyColor(o, col));
+            canvas.requestRenderAll(); markDirty();
+          }
+        });
+      }
+      const fsBrush = document.getElementById('fsBrush');
+      if (fsBrush) {
+        try { fsBrush.value = document.getElementById('brushSize').value || '3'; } catch {}
+        fsBrush.addEventListener('input', (e) => {
+          const sz = Number(e.target.value || 3);
+          const main = document.getElementById('brushSize'); if (main) main.value = String(sz);
+          if (canvas.isDrawingMode) canvas.freeDrawingBrush.width = sz;
+          const active = canvas.getActiveObjects();
+          if (active.length) {
+            active.forEach(o => { if (o.type === 'path') o.set({ strokeWidth: sz }); });
             canvas.requestRenderAll(); markDirty();
           }
         });
