@@ -404,6 +404,9 @@
           <div class="h-5 w-px bg-white/10 mx-1"></div>
           <button id="fsUndo" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Undo</button>
           <button id="fsRedo" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Redo</button>
+          <div class="h-5 w-px bg-white/10 mx-1"></div>
+          <button id="fsInsertTable" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Table</button>
+          <button id="fsInsertInvoice" class="px-2 py-1 text-sm rounded-lg hover:bg-white/10 border" style="border-color:var(--line)">Invoice</button>
         </div>
         <canvas id="ocCanvas"></canvas>
       </div>
@@ -970,6 +973,76 @@
       if (fsUndo) fsUndo.addEventListener('click', undoCanvas);
       const fsRedo = document.getElementById('fsRedo');
       if (fsRedo) fsRedo.addEventListener('click', redoCanvas);
+      const fsInsertTable = document.getElementById('fsInsertTable');
+      const fsInsertInvoice = document.getElementById('fsInsertInvoice');
+      if (fsInsertTable) fsInsertTable.addEventListener('click', () => {
+        const rows = Number(prompt('Rows?', '4') || 4);
+        const cols = Number(prompt('Cols?', '4') || 4);
+        insertTable(rows, cols);
+      });
+      if (fsInsertInvoice) fsInsertInvoice.addEventListener('click', () => insertInvoice());
+
+      function insertTable(rows=3, cols=3){
+        const cellW = 120, cellH = 40, pad = 2;
+        const startX = (canvas.getWidth() - cols*cellW)/2;
+        const startY = (canvas.getHeight() - rows*cellH)/2;
+        // draw grid lines
+        const lines = [];
+        for (let r=0; r<=rows; r++){
+          const y = startY + r*cellH;
+          lines.push(new fabric.Line([startX, y, startX + cols*cellW, y], { stroke: 'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+        }
+        for (let c=0; c<=cols; c++){
+          const x = startX + c*cellW;
+          lines.push(new fabric.Line([x, startY, x, startY + rows*cellH], { stroke: 'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+        }
+        lines.forEach(l => canvas.add(l));
+        // add cell textboxes
+        for (let r=0; r<rows; r++){
+          for (let c=0; c<cols; c++){
+            const tb = new fabric.Textbox('', { left: startX + c*cellW + pad, top: startY + r*cellH + pad, width: cellW - pad*2, fontSize: 16, fill: $('#brushColor').value || '#ffffff', erasable:true });
+            canvas.add(tb);
+          }
+        }
+        canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
+      }
+
+      function insertInvoice(){
+        const cx = canvas.getWidth()/2; let y = Math.max(40, canvas.getHeight()*0.1);
+        const mkText = (txt, opts={}) => new fabric.Textbox(txt, Object.assign({ left: cx-200, top: y, width: 400, fontSize: 20, fill: '#ffffff', textAlign:'center', erasable:true }, opts));
+        const title = mkText('INVOICE', { fontSize: 28, fontWeight: '700' }); y += 40;
+        const from = new fabric.Textbox('From:\\nYour Company\\nAddress', { left: cx-360, top: y, width: 240, fontSize: 14, fill:'#ffffff', erasable:true });
+        const to   = new fabric.Textbox('Bill To:\\nClient Name\\nAddress', { left: cx+120, top: y, width: 240, fontSize: 14, fill:'#ffffff', erasable:true }); y += 90;
+        canvas.add(title, from, to);
+        // items table
+        const headers = ['Item','Qty','Price','Amount'];
+        const cols = headers.length; const rows = 5; const cellW = 140; const cellH = 34; const startX = cx - (cols*cellW)/2; const startY = y;
+        for (let i=0;i<=rows;i++){
+          const ly = startY + i*cellH;
+          canvas.add(new fabric.Line([startX, ly, startX + cols*cellW, ly], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+        }
+        for (let c=0;c<=cols;c++){
+          const lx = startX + c*cellW;
+          canvas.add(new fabric.Line([lx, startY, lx, startY + rows*cellH], { stroke:'rgba(255,255,255,0.35)', selectable:false, evented:false, strokeUniform:true }));
+        }
+        headers.forEach((h,i)=>{
+          const tb = new fabric.Textbox(h, { left: startX + i*cellW + 6, top: startY + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', fontWeight:'600', erasable:true });
+          canvas.add(tb);
+        });
+        for (let r=1; r<rows; r++){
+          for (let c=0; c<cols; c++){
+            const tb = new fabric.Textbox('', { left: startX + c*cellW + 6, top: startY + r*cellH + 6, width: cellW-12, fontSize: 14, fill:'#ffffff', erasable:true });
+            canvas.add(tb);
+          }
+        }
+        // totals
+        y = startY + rows*cellH + 20;
+        const notes = new fabric.Textbox('Notes', { left: startX, top: y, width: cellW*2, fontSize: 14, fill:'#ffffff', erasable:true });
+        const totalLbl = new fabric.Textbox('Total:', { left: startX + cellW*2 + 20, top: y, width: cellW-20, fontSize: 16, fill:'#ffffff', textAlign:'right', erasable:true });
+        const totalVal = new fabric.Textbox('$0.00', { left: startX + cellW*3 + 6, top: y, width: cellW-12, fontSize: 16, fill:'#ffffff', erasable:true });
+        canvas.add(notes, totalLbl, totalVal);
+        canvas.requestRenderAll(); markDirty(); pushHistoryDebounced();
+      }
 
       // Controls
       $('#brushSize').addEventListener('input', (e) => {
