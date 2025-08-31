@@ -134,6 +134,13 @@
       .top-actions{ flex-wrap: wrap; justify-content:flex-end }
     .mobile-bar{ display:flex !important }
     }
+    @media (max-width: 768px){
+      /* Canvas toolbar horizontal scroll on small screens */
+      .canvas-toolbar{ overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; white-space:nowrap; max-width:100% }
+      .canvas-toolbar > *{ flex-shrink:0 }
+      /* Fullscreen mini bar scroll */
+      .canvas-fs-toolbar{ max-width: calc(100vw - 16px); overflow-x:auto; -webkit-overflow-scrolling:touch }
+    }
 
     /* Print styles to render the document cleanly */
     /* Fullscreen canvas mode (fallback + polish for iOS) */
@@ -1637,7 +1644,8 @@
         const availW = Math.max(320, wrap.clientWidth - 24);
         const scale = Math.min(availW / 816, availH / 1056, 1);
         state.docScale = scale;
-        page.style.transform = `scale(${scale})`;
+        page.style.left = '50%';
+        page.style.transform = `translateX(-50%) scale(${scale})`;
         wrap.style.minHeight = Math.ceil(1056 * scale + 24) + 'px';
       }
       fitDoc();
